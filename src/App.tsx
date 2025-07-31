@@ -63,25 +63,6 @@ function App() {
     }
   }, [selectedModel]);
 
-  // Left for future implementation
-  // const updateSession = useCallback(async (session: ChatSession) => {
-  //   try {
-  //     await invoke('update_chat_session', { session });
-      
-  //     // Reload sessions to get the updated data
-  //     const sessions = await invoke<ChatSession[]>('list_chat_sessions');
-  //     setChatSessions(sessions);
-      
-  //     if (currentSession?.id === session.id) {
-  //       const updatedSession = sessions.find(s => s.id === session.id);
-  //       if (updatedSession) {
-  //         setCurrentSession(updatedSession);
-  //       }
-  //     }
-  //   } catch (error) {
-  //     console.error('Failed to update session:', error);
-  //   }
-  // }, [currentSession]);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     try {
