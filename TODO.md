@@ -2,308 +2,166 @@
 
 ## 🎯 **MISSION CRITICAL: Transform Prototype to Production-Ready AI Coding Assistant**
 
-Based on comprehensive audit findings, this roadmap addresses the **60% feature gap** and **critical implementation issues** preventing production deployment.
+**Current Status**: 90%+ functional with core AI features operational  
+**Current Sprint**: Sprint 2 - Advanced Features (Context Window Management Priority)
 
 ---
 
-## 📋 **SPRINT OVERVIEW**
-
-| Sprint | Duration | Focus | Deliverables |
-|--------|----------|-------|--------------|
-| **Sprint 0** | Week 1 | Foundation Fixes | Critical bugs, security, basic functionality |
-| **Sprint 1** | Week 2-3 | Core Features | AI integration, command interfaces, testing |
-| **Sprint 2** | Week 4-5 | Advanced Features | Repository analysis, IDE integration |
-| **Sprint 3** | Week 6-7 | Performance & Scale | Optimization, concurrent operations |
-| **Sprint 4** | Week 8-9 | Production Readiness | CI/CD, documentation, deployment |
-| **Sprint 5** | Week 10-11 | Enterprise Features | Advanced AI features, monitoring |
-| **Sprint 6** | Week 12 | Launch Preparation | Final testing, marketing alignment |
-
----
-
-## 🚨 **SPRINT 0: FOUNDATION FIXES (Week 1)**
-*Critical issues preventing basic functionality*
-
-### **Security & Stability (CRITICAL)**
-- [x] **Enable Content Security Policy** in `tauri.conf.json` ✅
-  - Remove `"csp": null`
-  - Implement secure CSP rules for WebView
-  - Test all functionality with CSP enabled
-- [x] **Fix Command Interface Mismatches** ✅
-  - `src/App.tsx:22` - Change `get_chat_sessions` to `list_chat_sessions`
-  - `src/App.tsx:57` - Implement proper `save_chat_session` command
-  - `src/components/ChatInterface.tsx:112` - Fix `generate_stream` command reference
-- [x] **Input Validation Implementation** ✅
-  - Add validation for all user inputs before AI model calls
-  - Sanitize file paths in file operations
-  - Validate URLs for external services
-
-### **Core Integration Fixes**
-- [x] **Complete Main.rs Integration** ✅
-  - Add missing `OllamaClient` managed state initialization
-  - Add missing `ChromaManager` managed state initialization
-  - Fix `searxng_client` module import (should be `searxng_commands`)
-  - Add all referenced commands to invoke_handler
-- [x] **Implement Missing Commands in commands.rs** ✅
-  - `chat_with_ollama` - Direct chat completion
-  - `generate_with_ollama` - Text generation
-  - `chat_stream_with_ollama` - Streaming chat
-  - `generate_stream_with_ollama` - Streaming generation
-
-### **Basic Testing Infrastructure**
-- [x] **Make Test Scripts Functional** ✅
-  - Implement actual tests in `scripts/test.sh`
-  - Add basic unit tests for Rust backend
-  - Add basic React component tests
-  - Create integration test suite for Tauri commands
-
-### **🎉 SPRINT 0 COMPLETION SUMMARY**
-**Status: COMPLETED** ✅ **All critical foundation issues resolved**
-
-**Key Achievements:**
-- **Security Hardened**: Fixed critical CSP vulnerability, implemented comprehensive input validation
-- **Architecture Stabilized**: Resolved all command interface mismatches, proper managed state integration
-- **Development Ready**: Functional test scripts, all missing commands implemented
-- **Progress**: **40% → 70% functional** - Application now has solid, secure foundation
-
-**Impact**: Application is now stable, secure, and ready for advanced feature development in Sprint 1.
-
----
-
-## 🔧 **SPRINT 1: CORE FEATURES (Week 2-3)**
-*Essential functionality for MVP*
-
-### **AI Integration Completion** ✅ **COMPLETED**
-- [x] **Enhanced Ollama Client** ✅
-  - Implemented advanced HTTP client with streaming
-  - Added response caching (5min TTL)
-  - Proper error handling with graceful fallbacks
-  - Connection pooling and performance optimization
-- [x] **ChromaDB RAG System** ✅
-  - Complete document ingestion pipeline implemented
-  - Document upload, search, and collection management working
-  - Document metadata management functional
-  - Professional UI with real-time updates
-
-### **Code Analysis Foundation** ✅ **COMPLETED**
-- [x] **LSP Server AI Integration** ✅
-  - Connected LSP server to Ollama for intelligent suggestions
-  - Real-time code analysis with debounced processing (500ms)
-  - AI-powered diagnostics, completions, and hover information
-  - Response caching (5min TTL) for performance
-- [x] **Repository Analysis Framework** ✅
-  - Basic file tree analysis implemented
-  - Code structure understanding via AI
-  - Background processing without blocking UI
-  - Foundation ready for repository-wide operations
-
-### **Web Search Integration** ✅ **COMPLETED**
-- [x] **SearXNG Integration Completion** ✅
-  - Complete Docker infrastructure with health monitoring
-  - Comprehensive testing suite with integration tests
-  - Real-time health status indicators in SearchPanel
-  - Full search result processing and display
-  - Complete setup and troubleshooting documentation
-
-### **History & Context Management** ✅ **COMPLETED**
-- [x] **Session Management Completion** ✅
-  - ✅ Basic session structure implemented
-  - ✅ **Implemented persistent storage for chat sessions** - SQLite backend with proper serialization
-  - ✅ Fixed frontend-backend type mismatches for proper persistence
-  - ✅ Session CRUD operations fully functional
-  - [ ] **Add session search and filtering** - Basic filtering in UI, needs backend search
-  - [ ] **Implement context preservation across sessions** - Needs RAG integration
-  - [ ] **Add export/import functionality for sessions** - To be implemented
-
-### **🎉 SPRINT 1 COMPLETION STATUS**
-
-**✅ COMPLETED PHASES:**
-
-**Phase 1: SearXNG Web Search Integration** 🔥 **COMPLETE**
-- ✅ Fixed all command interface mismatches and managed state integration
-- ✅ Complete Docker infrastructure with health monitoring
-- ✅ Comprehensive testing suite with integration tests
-- ✅ Real-time health status indicators in SearchPanel
-- ✅ Complete setup and troubleshooting documentation
-
-**Phase 2: ChromaDB RAG System** 🔥 **COMPLETE**
-- ✅ Fixed all critical compilation errors and missing Tauri commands
-- ✅ Complete RAG document management system with professional UI
-- ✅ Document processing pipeline with metadata support
-- ✅ Working document upload, search, and collection management
-- ✅ Ready for semantic search upgrade with embeddings
-
-**Phase 3: LSP Server AI Integration** ⭐ **COMPLETE**
-- ✅ Reconnected LSP server with AI-powered code analysis
-- ✅ Smart completions and intelligent hover information
-- ✅ Debounced analysis (500ms) with response caching (5min TTL)
-- ✅ Background processing without blocking UI
-- ✅ Graceful fallback when AI services unavailable
-
-**🎯 FINAL OUTCOME ACHIEVED**: **70% → 90%+ functional** with core AI features and session persistence operational
-
-**⏳ SPRINT 1 CARRYOVER TO SPRINT 2:**
-1. **Session Enhancement Features** 🎯
-   - ✅ SQLite session storage implemented
-   - Add advanced search capabilities (full-text search)
-   - Create export/import functionality
-   - Add session templates and sharing
-   
-2. **RAG-to-Chat Integration** 🎯
-   - Connect RAG context to chat sessions
-   - Implement automatic context injection
-   - Add relevance scoring for RAG results
-   
-3. **Performance Optimization**
-   - Enhance caching strategies
-   - Optimize concurrent operations
-   - Improve memory management
-
----
-
-## 🚀 **SPRINT 2: ADVANCED FEATURES (Week 4-5)** 🔥 **CURRENT SPRINT - Day 1**
+## 🚀 **SPRINT 2: ADVANCED FEATURES** 🔥 **CURRENT SPRINT** 
 *Distinctive AI coding assistant capabilities*
 
-### **Sprint 2 Day 1 Progress** ✅
-- ✅ Completed session persistence implementation from Sprint 1
-- ✅ Fixed all frontend-backend type mismatches
-- ✅ Session CRUD operations fully functional with SQLite backend
-- ✅ **COMPLETED: RAG-to-Chat Integration with professional UI** 🎉
-  - ✅ Backend implementation with ChromaDB query integration
-  - ✅ Professional SVG icons replacing emoji placeholders
-  - ✅ Theme-consistent styling and animations
-  - ✅ Real-time RAG context indicators
+### **🎯 IMMEDIATE PRIORITY: Context Window Management**
+**Status**: Next priority implementation  
+**Goal**: Deliver 80% of context value with 20% of complexity
 
-### **Priority Carryover from Sprint 1** 🎯
-- [x] **Session Persistence Implementation** ✅ **COMPLETED**
-  - ✅ SQLite schema implemented with proper serialization
-  - ✅ Session CRUD operations fully functional
-  - ✅ Basic filtering in UI (by tags, search)
-  - [ ] Add full-text search in backend
-  - [ ] Create session export/import features
-  - [ ] Add session templates and presets
-  
-- [x] **RAG-to-Chat Integration** ✅ **COMPLETED**
-  - [x] Connect RAG search to chat context ✅ **Backend implemented**
-    - ✅ Modified `generate_stream_with_ollama` to query ChromaDB when RAG enabled
-    - ✅ Implemented automatic context injection with top 3 relevant documents
-    - ✅ Added RAG context event emission for UI feedback
-  - [x] Create UI for RAG context selection in chat ✅ **UI COMPLETED**
-    - ✅ Added RAG toggle button in ChatInterface
-    - ✅ Added collection selection dropdown
-    - ✅ Show RAG context indicators when documents are used
-    - ✅ Added CSS styling for RAG UI elements
+**Phase 1: MVP Implementation** 
+- [ ] Create React components based on mockup (`mockups/context-window-visualizer.html`):
+  - [ ] `TokenBudgetBar` - Visual allocation with hover tooltips
+  - [ ] `ContextFileList` - Pin/unpin functionality with relevance scores  
+  - [ ] `ContextControls` - Model selection and settings
+- [ ] Rust backend (`src-tauri/src/context_manager.rs`):
+  - [ ] `ContextManager` struct with token counting (conservative estimates + 1.2x)
+  - [ ] Tauri commands: `get_context_budget`, `pin_file`, `unpin_file`, `calculate_file_relevance`, `build_context`
+- [ ] Integration into existing `ChatInterface.tsx`
+- [ ] Real-time updates (< 16ms) with optimistic UI
 
-- [ ] **Pragmatic Context Window Management** ? **NEXT PRIORITY**
-  - [ ] **Phase 1: MVP Implementation (Week 1)**
-    - [ ] Basic sliding window with RAG integration
-    - [ ] Simple token counting with 20% safety margin
-    - [ ] Visual token budget bar (see mockup: `mockups/context-window-visualizer.html`)
-    - [ ] Manual file pinning/exclusion
-    
-  - [ ] **Phase 2: Smart Truncation (Week 2)**
-    - [ ] Middle-truncation for large files (keep start/end)
-    - [ ] Importance markers for user-edited sections
-    - [ ] Basic summarization for excluded content
-    - [ ] Context usage visualization in UI
-    
-  - [ ] **Phase 3: User Control & Transparency (Week 3)**
-    - [ ] "Force include" and pattern exclusion settings
-    - [ ] Show WHY files are included (relevance scores)
-    - [ ] Context presets (Debug, Refactor, Document, etc.)
-    - [ ] Real-time token budget updates
-    
-  - [ ] **Phase 4: Performance & Scale (Week 4+)**
-    - [ ] Incremental embedding updates for changed files
-    - [ ] Pre-fetch likely contexts during idle time
-    - [ ] Memory-bounded caching with LRU eviction
-    - [ ] A/B test different context strategies
-  
-  - [ ] **Core Implementation Structure**
-    ```rust
-    pub struct ContextManager {
-        max_tokens: usize,
-        reserved_tokens: usize,
-        
-        pub fn build_context(&self, 
-            conversation: &[Message], 
-            rag_results: &[Document],
-            user_preferences: &ContextPrefs
-        ) -> Context {
-            let mut budget = self.max_tokens - self.reserved_tokens;
-            let mut context = Context::new();
-            
-            // 1. Always include current conversation
-            context.add_conversation(conversation, &mut budget);
-            
-            // 2. Add RAG results by relevance
-            context.add_rag_results(rag_results, &mut budget);
-            
-            // 3. Add pinned files if room
-            context.add_pinned_files(user_preferences, &mut budget);
-            
-            // 4. Fill remaining with smart suggestions
-            context.fill_remaining(project_context, &mut budget);
-            
-            context
-        }
-    }
-    ```
-  
-  - [ ] **Success Metrics**
-    - [ ] 80% of context value with 20% of complexity
-    - [ ] User can see and control context in < 3 clicks
-    - [ ] Context building takes < 100ms for average project
-    - [ ] Memory usage stays under 500MB even for large repos
+**Success Metrics**:
+- User can see/control context in < 3 clicks
+- Context building < 100ms for average project
+- Memory usage < 500MB for large repos
 
-### **Repository-Wide Coding** 🚀 **Sprint 2 Focus**
+### **Repository-Wide Coding** 
 - [ ] **Advanced Code Analysis**
-  - [ ] Implement multi-file dependency analysis
-  - [ ] Enhance codebase structure understanding (build on LSP foundation)
-  - [ ] Create AI-powered refactoring suggestions
-  - [ ] Build change impact analysis system
-  - [ ] Parallelize repository analysis with futures::stream
+  - [ ] Multi-file dependency analysis (build on existing LSP foundation)
+  - [ ] AI-powered refactoring suggestions 
+  - [ ] Change impact analysis system
+  - [ ] Parallelize analysis with futures::stream
 
 - [ ] **Automated Code Generation**
-  - [ ] Implement context-aware code generation
-  - [ ] Add boilerplate code creation
-  - [ ] Create test generation capabilities
-  - [ ] Build documentation generation from code
+  - [ ] Context-aware code generation
+  - [ ] Boilerplate code creation
+  - [ ] Test generation capabilities
+  - [ ] Documentation generation from code
 
-### **IDE Integration (Real Implementation)**
-- [ ] **VS Code Extension Completion**
-  - Replace placeholder functions with real implementations
-  - Implement bidirectional communication with main app
-  - Add code selection and context passing
-  - Create inline AI suggestions panel
-- [ ] **Visual Studio Extension**
-  - Complete MEF component implementation
-  - Add Tauri app communication
-  - Implement code analysis integration
-  - Create context menu integrations
-
-### **Multi-Window & Docking**
-- [ ] **Window Management System**
-  - Implement real IDE docking mechanism
-  - Add window state persistence
-  - Create multi-monitor support
-  - Build window synchronization system
-- [ ] **IDE Process Detection**
-  - Add automatic IDE detection
-  - Implement process monitoring
-  - Create automatic docking on IDE startup
-  - Build notification system for IDE events
+### **IDE Integration Enhancement**
+- [ ] **VS Code Extension** - Replace placeholders with real implementations
+- [ ] **Visual Studio Extension** - Complete MEF component implementation  
+- [ ] **Multi-Window Docking** - Real IDE docking mechanism
+- [ ] **IDE Process Detection** - Automatic detection and docking
 
 ### **Documentation Scraping**
-- [ ] **Web Scraping Implementation**
-  - Complete `doc_scraper.rs` functionality
-  - Add support for major documentation sites
-  - Implement content parsing and cleaning
-  - Create automatic RAG indexing pipeline
-- [ ] **Documentation Management**
-  - Build documentation source management
-  - Add update scheduling and monitoring
-  - Create documentation search interface
-  - Implement relevance scoring for results
+- [ ] Complete `doc_scraper.rs` functionality
+- [ ] Support for major documentation sites
+- [ ] Automatic RAG indexing pipeline
+- [ ] Documentation source management
+
+### **Session Enhancements** (Carryover from Sprint 1)
+- [ ] Full-text search in backend
+- [ ] Session export/import functionality  
+- [ ] Session templates and presets
+
+---
+
+## ⚡ **SPRINT 3: PERFORMANCE & SCALE** 
+*Enterprise-ready performance and reliability*
+
+### **Performance Optimization**
+- [ ] **Memory Management** - Automatic cleanup, usage monitoring, cache eviction
+- [ ] **Concurrent Operations** - Replace HashMap with DashMap, worker thread pools
+- [ ] **Batch Processing** - Batched embeddings, bulk document processing
+- [ ] **Advanced Caching** - Query result caching, smart invalidation
+
+### **Error Handling & Resilience**
+- [ ] **Robust Error Management** - Comprehensive handling, retry mechanisms
+- [ ] **Service Reliability** - Health checks, failover, connection monitoring
+
+---
+
+## 🏭 **SPRINT 4: PRODUCTION READINESS**
+*Infrastructure and operational excellence*
+
+### **CI/CD Pipeline**
+- [ ] GitHub Actions setup with automated testing
+- [ ] Code quality checks and security scanning
+- [ ] Automated release process
+
+### **Comprehensive Testing**
+- [ ] Complete unit test coverage (>80%)
+- [ ] Cross-platform testing (Windows, macOS, Linux)
+- [ ] Load testing for concurrent operations
+
+### **Documentation & Deployment**
+- [ ] Comprehensive technical and user documentation
+- [ ] One-click installer for all platforms
+- [ ] Enterprise deployment options (MSI, Group Policy)
+
+---
+
+## 🎯 **SPRINT 5: ENTERPRISE FEATURES**
+*Advanced capabilities for professional users*
+
+### **Advanced AI Features**
+- [ ] Multi-model support (OpenAI GPT, Anthropic Claude)
+- [ ] Smart context selection and compression
+- [ ] Context intelligence and reuse
+
+### **Team Collaboration**
+- [ ] Shared knowledge base and team templates
+- [ ] User authentication and authorization
+- [ ] Audit logging and compliance
+
+### **Monitoring & Analytics**
+- [ ] Performance metrics and usage analytics
+- [ ] AI operation insights and cost tracking
+
+---
+
+## 🚀 **SPRINT 6: LAUNCH PREPARATION**
+*Final validation and market readiness*
+
+### **Final Testing & Launch**
+- [ ] Production environment testing
+- [ ] User acceptance testing and feedback integration
+- [ ] Marketing alignment and release preparation
+
+---
+
+## 📊 **SUCCESS METRICS**
+
+### **Technical Metrics**
+- **Performance**: <200ms response time for AI queries
+- **Reliability**: 99.9% uptime for core functionality  
+- **Scalability**: Support 10,000+ file repositories
+- **Quality**: <0.1% error rate in production
+
+### **User Experience Metrics**
+- **Installation**: <5 minutes from download to first use
+- **Learning Curve**: New users productive within 30 minutes
+- **Feature Adoption**: >80% of advertised features actively used
+- **User Satisfaction**: >4.5/5 average rating
+
+---
+
+## 🏁 **COMPLETED WORK SUMMARY**
+
+### **Sprint 0 (Foundation Fixes)** ✅ **COMPLETE**
+- Security hardening (CSP, input validation)
+- Command interface alignment and managed state integration
+- Functional test scripts and missing commands implementation
+- **Result**: 40% → 70% functional with solid foundation
+
+### **Sprint 1 (Core Features)** ✅ **COMPLETE** 
+- **Enhanced Ollama Client** - Streaming, caching, connection pooling
+- **ChromaDB RAG System** - Complete document management with professional UI
+- **LSP Server AI Integration** - Real-time analysis with debounced processing  
+- **SearXNG Web Search** - Docker infrastructure with health monitoring
+- **Session Management** - SQLite persistence with CRUD operations
+- **RAG-to-Chat Integration** - Automatic context injection with UI indicators
+- **Result**: 70% → 90%+ functional with all core AI features operational
+
+**🎯 ULTIMATE GOAL**: Production-ready, enterprise-capable AI coding assistant  
+**📅 TARGET COMPLETION**: 12 weeks total (4 weeks remaining)  
+**🚀 CURRENT FOCUS**: Context Window Management MVP implementation
 
 ---
 
