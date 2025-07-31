@@ -1,0 +1,233 @@
+.token-budget-bar {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: var(--font-family);
+  margin-bottom: 12px;
+}
+
+.budget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.budget-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.budget-title svg {
+  color: var(--accent-color);
+}
+
+.budget-summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.used-tokens {
+  color: var(--text-primary);
+}
+
+.separator {
+  color: var(--text-secondary);
+  margin: 0 2px;
+}
+
+.total-tokens {
+  color: var(--text-secondary);
+}
+
+.percentage {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.budget-bar {
+  margin-bottom: 12px;
+}
+
+.bar-track {
+  display: flex;
+  height: 24px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.bar-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.3s ease;
+  min-width: 2px;
+}
+
+.bar-segment:hover {
+  filter: brightness(1.1);
+  z-index: 1;
+}
+
+.segment-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+}
+
+.available-label {
+  color: var(--text-secondary);
+  text-shadow: none;
+}
+
+/* Segment Colors */
+.bar-segment.conversation {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.bar-segment.rag {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.bar-segment.pinned {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.bar-segment.suggested {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.bar-segment.reserved {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+}
+
+.bar-segment.available {
+  background: var(--bg-tertiary);
+  border-left: 1px solid var(--border-color);
+}
+
+.budget-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend-color.conversation {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.legend-color.rag {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.legend-color.pinned {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.legend-color.suggested {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.legend-color.reserved {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+}
+
+.legend-color.available {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+}
+
+.legend-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.legend-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .budget-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .segment-label {
+    display: none;
+  }
+  
+  .budget-legend {
+    gap: 8px;
+  }
+  
+  .legend-item {
+    font-size: 11px;
+  }
+}
+
+/* Animation for budget changes */
+.bar-segment {
+  transition: width 0.5s ease-in-out, background-color 0.3s ease;
+}
+
+/* Accessibility */
+.token-budget-bar:focus-within {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .bar-segment {
+    border-right: 1px solid var(--text-primary);
+  }
+  
+  .segment-label {
+    text-shadow: 1px 1px 0 var(--bg-primary);
+  }
+}
+
+/* Dark theme specific adjustments */
+@media (prefers-color-scheme: dark) {
+  .budget-bar {
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .bar-segment {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+}
