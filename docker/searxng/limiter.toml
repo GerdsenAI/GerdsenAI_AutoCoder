@@ -1,0 +1,57 @@
+# Rate limiting configuration for SearXNG development instance
+
+[botdetection.ip_limit]
+# For development, be more lenient with rate limiting
+link_token = true
+filter_with_method = true
+suspect_headers = [
+    'CF-RAY',
+    'CF-Connecting-IP',
+    'CF-IPCountry',
+    'CF-Visitor',
+    'CF-Request-ID',
+    'x-forwarded-for',
+    'x-real-ip',
+    'x-cluster-client-ip',
+    'x-forwarded',
+    'forwarded-for',
+    'forwarded'
+]
+
+[botdetection.ip_lists]
+pass_searxng_org = [
+    '46.101.49.186',
+    '185.181.107.8',
+    '138.201.250.148',
+    '176.9.50.119',
+    '2a01:4f8:162:24e6::2',
+    '2a01:4f9:c010:b2ad::1',
+    '2a01:4f8:1c1c:9319::1',
+    '2a01:4f8:a0:52a5::2'
+]
+
+pass_ip = [
+    '127.0.0.1',
+    '::1',
+    '192.168.0.0/16',
+    '172.16.0.0/12',
+    '10.0.0.0/8'
+]
+
+block_ip = []
+
+# More lenient rules for development
+[botdetection.http_accept]
+suspicious_http_accept = ['*/*, */*']
+
+[botdetection.http_accept_encoding]
+suspicious_http_accept_encoding = []
+
+[botdetection.http_accept_language]
+suspicious_http_accept_language = []
+
+[botdetection.http_connection]
+suspicious_http_connection = []
+
+[botdetection.http_user_agent]
+suspicious_http_user_agent = []

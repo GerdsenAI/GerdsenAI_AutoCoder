@@ -1,0 +1,182 @@
+/* Search Health Indicator Styles */
+.search-health-indicator {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.875rem;
+  user-select: none;
+}
+
+.health-status-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: var(--background-secondary, #f5f5f5);
+  border: 1px solid var(--border-color, #e0e0e0);
+  transition: background-color 0.2s ease;
+}
+
+.health-status-main:hover {
+  background-color: var(--background-hover, #f0f0f0);
+}
+
+.health-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 0.3s ease;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.health-status-text {
+  font-weight: 500;
+  color: var(--text-primary, #333);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.health-refresh-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  width: 20px;
+  height: 20px;
+}
+
+.health-refresh-button:hover:not(:disabled) {
+  background-color: var(--background-hover, rgba(0, 0, 0, 0.1));
+  transform: rotate(45deg);
+}
+
+.health-refresh-button:active:not(:disabled) {
+  transform: rotate(90deg);
+}
+
+.health-refresh-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.health-details {
+  margin-top: 8px;
+  padding: 8px;
+  background-color: var(--background-tertiary, #fafafa);
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.health-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.health-detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.health-detail-label {
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+}
+
+.health-detail-value {
+  color: var(--text-primary, #333);
+  font-family: monospace;
+}
+
+.health-detail-row.health-error {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.health-error-text {
+  color: var(--error-color, #f44336);
+  font-size: 0.75rem;
+  word-break: break-word;
+  font-family: monospace;
+  background-color: var(--error-background, #ffebee);
+  padding: 4px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--error-border, #ffcdd2);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Compact variant */
+.search-health-indicator.compact .health-status-main {
+  padding: 2px 6px;
+}
+
+.search-health-indicator.compact .health-status-text {
+  font-size: 0.8rem;
+}
+
+.search-health-indicator.compact .health-refresh-button {
+  width: 16px;
+  height: 16px;
+  font-size: 0.75rem;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .search-health-indicator {
+    --background-secondary: #333;
+    --background-tertiary: #2a2a2a;
+    --background-hover: #404040;
+    --border-color: #555;
+    --text-primary: #fff;
+    --text-secondary: #ccc;
+    --error-color: #ff6b6b;
+    --error-background: #2d1f1f;
+    --error-border: #4a2c2c;
+  }
+}
+
+/* Animation for checking state */
+.health-indicator-dot {
+  animation: none;
+}
+
+.health-status-main:has(.health-indicator-dot[style*="ffa500"]) .health-indicator-dot {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .health-status-text {
+    font-size: 0.8rem;
+  }
+  
+  .health-details {
+    font-size: 0.75rem;
+  }
+}

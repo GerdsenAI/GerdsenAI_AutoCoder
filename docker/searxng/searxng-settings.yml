@@ -1,0 +1,148 @@
+# SearXNG configuration for CSE-Icon AutoCoder development
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "CSE-Icon AutoCoder SearXNG"
+  privacypolicy_url: false
+  donation_url: false
+  contact_url: false
+  enable_metrics: false
+
+brand:
+  new_issue_url: false
+  docs_url: false
+  public_instances: false
+  wiki_url: false
+
+search:
+  safe_search: 0
+  autocomplete: "google"
+  default_lang: "en"
+  ban_time_on_fail: 5
+  max_ban_time_on_fail: 120
+  formats:
+    - html
+    - json
+
+server:
+  port: 8080
+  bind_address: "0.0.0.0"
+  secret_key: "super-secret-key-for-development-only"
+  limiter: true
+  image_proxy: false
+  method: "GET"
+
+ui:
+  static_use_hash: false
+  default_locale: "en"
+  query_in_title: false
+  infinite_scroll: false
+  center_alignment: false
+  cache_url: https://web.archive.org/web/
+  default_theme: simple
+  theme_args:
+    simple_style: auto
+
+# Redis configuration for rate limiting
+redis:
+  url: redis://redis:6379/0
+
+# Enable engines suitable for development documentation search
+engines:
+  - name: github
+    engine: github
+    shortcut: gh
+    categories: [it, general]
+    disabled: false
+    
+  - name: stackoverflow
+    engine: stackoverflow
+    shortcut: so
+    categories: [it, general]
+    disabled: false
+    
+  - name: google
+    engine: google
+    shortcut: go
+    categories: [general, images, videos, news, maps]
+    disabled: false
+    use_mobile_ui: false
+    
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    categories: [general, images, videos, news, maps]
+    disabled: false
+    
+  - name: bing
+    engine: bing
+    shortcut: bi
+    categories: [general, images, videos, news, maps]
+    disabled: false
+    
+  - name: brave
+    engine: brave
+    shortcut: br
+    categories: [general, images, videos, news]
+    disabled: false
+    
+  - name: startpage
+    engine: startpage
+    shortcut: sp
+    categories: [general, images]
+    disabled: true
+    
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    categories: [general]
+    disabled: false
+    
+  - name: reddit
+    engine: reddit
+    shortcut: re
+    categories: [social media, it]
+    disabled: false
+    timeout: 10.0
+    
+  - name: arxiv
+    engine: arxiv
+    shortcut: arx
+    categories: [science, it]
+    disabled: false
+    timeout: 4.0
+    
+  - name: gitlab
+    engine: gitlab
+    shortcut: gl
+    categories: [it]
+    disabled: false
+    
+  - name: gitea
+    engine: gitea
+    shortcut: gt
+    categories: [it]
+    disabled: true
+    
+  - name: codeberg
+    engine: gitea
+    base_url: https://codeberg.org
+    shortcut: cb
+    categories: [it]
+    disabled: true
+    
+  - name: sourcehut
+    engine: sourcehut
+    shortcut: sh
+    categories: [it]
+    disabled: true
+
+# Disable engines that might cause issues in development
+disabled_engines:
+  - yandex
+  - baidu
+  - qwant
+  - searx
+  - yahoo
+  - ask

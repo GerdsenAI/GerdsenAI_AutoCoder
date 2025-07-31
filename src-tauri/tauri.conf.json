@@ -1,0 +1,42 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "CSE-Icon AutoCoder",
+  "version": "1.0.0",
+  "identifier": "com.cseicon.autocoder",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:3001",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:* https://api.openai.com https://*.anthropic.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';"
+    },
+    "windows": [
+      {
+        "title": "CSE-Icon AutoCoder",
+        "width": 800,
+        "height": 600,
+        "minWidth": 400,
+        "minHeight": 300,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "deb",
+      "msi",
+      "app",
+      "dmg",
+      "appimage"
+    ],
+    "icon": [
+      "icons/app_icon.png",
+      "icons/icon.ico"
+    ]
+  }
+}
