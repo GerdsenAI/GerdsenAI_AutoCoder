@@ -1,14 +1,14 @@
-# User Guide for Auto-Coder Companion
+# User Guide for GerdsenAI Socrates
 
-This guide provides detailed instructions on how to use Auto-Coder Companion's features effectively.
+This guide provides detailed instructions on how to use GerdsenAI Socrates' features effectively.
 
 ## Getting Started
 
-After installing Auto-Coder Companion (see INSTALL.md), launch the application either as a standalone app or from your IDE.
+After installing GerdsenAI Socrates (see INSTALLATION.md), launch the application either as a standalone app or from your IDE.
 
 ### First Launch
 
-1. When you first launch Auto-Coder Companion, you'll see the main interface with the model selector at the top
+1. When you first launch GerdsenAI Socrates, you'll see the main interface with the model selector at the top
 2. Select an Ollama model from the dropdown (requires Ollama to be running)
 3. The status indicator will show green when connected successfully
 
@@ -38,8 +38,8 @@ To analyze code:
 
 In IDE extensions:
 1. Select code in your editor
-2. Right-click and choose "Analyze with Auto-Coder"
-3. View analysis results in the Auto-Coder panel
+2. Right-click and choose "Analyze with Socrates"
+3. View analysis results in the Socrates panel
 
 ### Repository-wide Analysis
 
@@ -52,7 +52,7 @@ To analyze an entire repository:
 
 In IDE extensions:
 1. Right-click on a project folder in the explorer
-2. Select "Analyze Repository with Auto-Coder"
+2. Select "Analyze Repository with Socrates"
 
 ### Web Search
 
@@ -100,7 +100,7 @@ The History tab provides access to past conversations:
 
 ### Multi-window and Docking
 
-Auto-Coder Companion supports flexible window management:
+GerdsenAI Socrates supports flexible window management:
 
 1. Click the "Undock" button to separate the window from your IDE
 2. Drag the window to position it anywhere on your screen
@@ -131,7 +131,7 @@ To change or configure AI models:
 
 ### Custom Commands
 
-Auto-Coder Companion supports custom commands in the chat:
+GerdsenAI Socrates supports custom commands in the chat:
 
 - `/analyze [file]` - Analyze a specific file
 - `/fix [error]` - Generate a fix for a specific error

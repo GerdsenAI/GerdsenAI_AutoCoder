@@ -1,4 +1,4 @@
-# CSE-Icon AutoCoder - Windows 11 Setup Guide
+# GerdsenAI Socrates - Windows 11 Setup Guide
 
 ## System Requirements
 
@@ -67,8 +67,8 @@ If the automatic installation fails, follow these steps to manually install the 
 
 1. Right-click on `GENERATE_INSTALLER.BAT` and select "Run as administrator"
 2. Follow the on-screen instructions
-3. The installer will be created in `.\installer\CSE-Icon_AutoCoder_Setup.msi`
-4. A ZIP archive will also be created at `.\CSE-Icon_AutoCoder_Installer.zip`
+3. The installer will be created in `.\installer\GerdsenAI_Socrates_Setup.msi`
+4. A ZIP archive will also be created at `.\GerdsenAI_Socrates_Installer.zip`
 
 ## Troubleshooting
 
@@ -97,4 +97,4 @@ If the automatic installation fails, follow these steps to manually install the 
 ### Getting Help
 
 If you encounter any issues not covered in this guide, please visit:
-https://cse-icon.com/support
+https://gerdsenai.com/support

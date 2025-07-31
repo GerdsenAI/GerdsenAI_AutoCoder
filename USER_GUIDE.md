@@ -1,16 +1,16 @@
-# CSE-Icon AutoCoder - User Guide
+# GerdsenAI Socrates - User Guide
 
-This guide provides instructions on how to use the CSE-Icon AutoCoder application effectively.
+This guide provides instructions on how to use the GerdsenAI Socrates application effectively.
 
 ## Getting Started
 
-After installing CSE-Icon AutoCoder (see [INSTALLATION.md](./INSTALLATION.md)), launch the application from your desktop shortcut or Start menu. The application will automatically dock to the side of your IDE (VS Code or Visual Studio).
+After installing GerdsenAI Socrates (see [INSTALLATION.md](./INSTALLATION.md)), launch the application from your desktop shortcut or Start menu. The application will automatically dock to the side of your IDE (VS Code or Visual Studio).
 
 ## Interface Overview
 
-The CSE-Icon AutoCoder interface consists of:
+The GerdsenAI Socrates interface consists of:
 
-1. **Header**: Contains the CSE-Icon logo and connection status
+1. **Header**: Contains the GerdsenAI logo and connection status
 2. **Model Selector**: Dropdown to choose your preferred Ollama model
 3. **Tab Navigation**: Switch between Chat, Search, RAG, and History views
 4. **Content Area**: Main interaction area that changes based on selected tab
@@ -60,7 +60,7 @@ The History tab shows your past conversations:
 
 ### Light & Dark Mode
 
-CSE-Icon AutoCoder supports both light and dark themes:
+GerdsenAI Socrates supports both light and dark themes:
 
 - **Auto Mode**: Automatically matches your system theme
 - **Manual Toggle**: Switch between light and dark mode using the theme toggle in settings
