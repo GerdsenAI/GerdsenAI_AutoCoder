@@ -1,4 +1,3 @@
-import React from 'react';
 import './TokenBudgetBar.css';
 
 export interface ContextBudget {
@@ -19,10 +18,10 @@ interface TokenBudgetBarProps {
   className?: string;
 }
 
-export const TokenBudgetBar: React.FC<TokenBudgetBarProps> = ({ 
+export const TokenBudgetBar = ({ 
   budget, 
   className = '' 
-}) => {
+}: TokenBudgetBarProps) => {
   const { total, breakdown } = budget;
   
   // Calculate percentages for visual representation
@@ -99,7 +98,7 @@ export const TokenBudgetBar: React.FC<TokenBudgetBarProps> = ({
       
       <div className="budget-bar">
         <div className="bar-track">
-          {segments.map((segment, index) => (
+          {segments.map((segment) => (
             segment.percentage > 0 && (
               <div
                 key={segment.label}

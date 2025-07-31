@@ -7,6 +7,10 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { coldarkDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ChatMessage, ChatSession, ISODateString } from '../types';
 import { validateMessage, validateModelName } from '../utils/validation';
+import { useContextManager } from '../hooks/useContextManager';
+import { TokenBudgetBar } from './TokenBudgetBar';
+import { ContextFileList } from './ContextFileList';
+import { ContextControls } from './ContextControls';
 import './ChatInterface.css';
 
 // Utility function to generate unique IDs
@@ -48,6 +52,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [collections, setCollections] = useState<string[]>([]);
   const [ragContextInfo, setRagContextInfo] = useState<RAGContextEvent | null>(null);
   const ragListenerRef = useRef<(() => void) | null>(null);
+  
+  // Context Window Management
+  const [showContextPanel, setShowContextPanel] = useState(false);
+  const contextManager = useContextManager();
 
   // Update messages when session changes
   useEffect(() => {
@@ -344,6 +352,69 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         )}
         
+        {/* Context Window Management Panel */}
+        {showContextPanel && (
+          <div className="context-management-panel">
+            <div className="context-panel-header">
+              <h3>Context Window Management</h3>
+              <button 
+                className="close-panel-button"
+                onClick={() => setShowContextPanel(false)}
+                aria-label="Close Context Panel"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18"/>
+                  <path d="M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            
+            {contextManager.error && (
+              <div className="context-error">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span>{contextManager.error}</span>
+              </div>
+            )}
+            
+            <div className="context-panel-content">
+              {/* Token Budget Visualization */}
+              {contextManager.budget && (
+                <div className="context-section">
+                  <TokenBudgetBar 
+                    budget={contextManager.budget} 
+                    className="context-budget-bar"
+                  />
+                </div>
+              )}
+              
+              {/* Context Configuration */}
+              <div className="context-section">
+                <ContextControls
+                  settings={contextManager.settings}
+                  onSettingsChange={contextManager.updateSettings}
+                />
+              </div>
+              
+              {/* File Management */}
+              <div className="context-section">
+                <ContextFileList
+                  includedFiles={contextManager.files.filter(f => f.is_pinned)}
+                  suggestedFiles={contextManager.files.filter(f => !f.is_pinned)}
+                  availableTokens={contextManager.budget?.available || 0}
+                  onFilePin={contextManager.pinFile}
+                  onFileUnpin={contextManager.unpinFile}
+                  onFileInclude={contextManager.pinFile}
+                  onFileRemove={contextManager.unpinFile}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="input-controls">
           <button
             className={`control-button ${ragEnabled ? 'active' : ''}`}
@@ -376,10 +447,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </select>
           )}
           <button
-            className="control-button"
-            title="Add Context"
-            aria-label="Add Context"
+            className={`control-button ${showContextPanel ? 'active' : ''}`}
+            title="Manage Context Window"
+            aria-label="Manage Context Window"
             disabled={isLoading}
+            onClick={() => setShowContextPanel(!showContextPanel)}
           >
             <svg className="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -388,10 +460,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <path d="M16 17H8"/>
               <path d="M10 9H8"/>
             </svg>
-            {/* Example badge for context files */}
-            {session.context && session.context.code_snippets.length > 0 && (
-              <span className="badge">{session.context.code_snippets.length}</span>
+            {contextManager.files.filter(f => f.is_pinned).length > 0 && (
+              <span className="badge">{contextManager.files.filter(f => f.is_pinned).length}</span>
             )}
+            {showContextPanel && <span className="badge">CONTEXT</span>}
           </button>
           <button
             className="control-button"
