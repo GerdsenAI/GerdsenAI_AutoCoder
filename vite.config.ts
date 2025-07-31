@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
@@ -99,6 +100,14 @@ export default defineConfig(({ command, mode }) => {
       // Make port info available to the frontend if needed
       __DEV_PORT__: JSON.stringify(preferredPort),
       __AUTO_PORT_DETECTION__: JSON.stringify(autoPortDetection),
+    },
+    
+    // Test configuration
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: ['./src/test/setup.ts'],
+      css: true,
     },
   };
 });

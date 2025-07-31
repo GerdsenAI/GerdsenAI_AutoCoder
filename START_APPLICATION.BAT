@@ -1,9 +1,9 @@
 @echo off
-REM CSE-Icon AutoCoder - Application Startup Script
-REM Copyright (c) 2025 CSE-Icon Software. All rights reserved.
+REM GerdsenAI Socrates - Application Startup Script
+REM Copyright (c) 2025 GerdsenAI. All rights reserved.
 
 echo ===================================================
-echo CSE-Icon AutoCoder - Application Startup Script
+echo GerdsenAI Socrates - Application Startup Script
 echo ===================================================
 echo.
 
@@ -71,7 +71,7 @@ if %errorLevel% neq 0 (
 :CONTINUE_STARTUP
 
 REM Check if development or production mode
-if exist ".\target\release\CSE-Icon_AutoCoder.exe" (
+if exist ".\target\release\GerdsenAI_Socrates.exe" (
     set MODE=production
     goto :PRODUCTION_MODE
 ) else if exist ".\target\release\bundle" (
@@ -83,7 +83,7 @@ if exist ".\target\release\CSE-Icon_AutoCoder.exe" (
 )
 
 :DEVELOPMENT_MODE
-echo [INFO] Starting CSE-Icon AutoCoder in development mode...
+echo [INFO] Starting GerdsenAI Socrates in development mode...
 echo.
 
 REM Check if package.json exists
@@ -120,22 +120,22 @@ if %errorLevel% neq 0 (
 goto :END
 
 :PRODUCTION_MODE
-echo [INFO] Starting CSE-Icon AutoCoder in production mode...
+echo [INFO] Starting GerdsenAI Socrates in production mode...
 echo.
 
 REM Check if the built application exists
-if exist ".\target\release\CSE-Icon_AutoCoder.exe" (
-    start "" ".\target\release\CSE-Icon_AutoCoder.exe"
-) else if exist ".\target\release\bundle\msi\CSE-Icon_AutoCoder_*.msi" (
+if exist ".\target\release\GerdsenAI_Socrates.exe" (
+    start "" ".\target\release\GerdsenAI_Socrates.exe"
+) else if exist ".\target\release\bundle\msi\GerdsenAI_Socrates_*.msi" (
     echo [INFO] Found MSI installer. Please install the application first:
-    for %%f in (".\target\release\bundle\msi\CSE-Icon_AutoCoder_*.msi") do (
+    for %%f in (".\target\release\bundle\msi\GerdsenAI_Socrates_*.msi") do (
         echo [INFO] %%f
     )
     echo.
     
     set /p INSTALL="Would you like to run the installer now? (y/n): "
     if /i "%INSTALL%"=="y" (
-        for %%f in (".\target\release\bundle\msi\CSE-Icon_AutoCoder_*.msi") do (
+        for %%f in (".\target\release\bundle\msi\GerdsenAI_Socrates_*.msi") do (
             start "" "%%f"
         )
     )
@@ -168,6 +168,6 @@ if exist ".\target\release\CSE-Icon_AutoCoder.exe" (
 
 :END
 echo.
-echo [INFO] CSE-Icon AutoCoder startup completed.
+echo [INFO] GerdsenAI Socrates startup completed.
 echo.
 pause

@@ -1,9 +1,9 @@
 @echo off
-REM CSE-Icon AutoCoder - Dependency Installation Script
-REM Copyright (c) 2025 CSE-Icon Software. All rights reserved.
+REM GerdsenAI Socrates - Dependency Installation Script
+REM Copyright (c) 2025 GerdsenAI. All rights reserved.
 
 echo ===================================================
-echo CSE-Icon AutoCoder - Dependency Installation Script
+echo GerdsenAI Socrates - Dependency Installation Script
 echo ===================================================
 echo.
 

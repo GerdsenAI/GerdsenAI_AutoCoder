@@ -15,7 +15,10 @@
     "port:check": "node scripts/port-utils.js check",
     "port:kill": "node scripts/port-utils.js kill",
     "port:info": "node scripts/port-utils.js info",
-    "test": "echo \"Frontend tests not yet implemented. Run 'npm run test:basic' for basic validation.\"",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:basic": "echo \"✅ Basic validation: package.json valid, TypeScript compilation check...\" && npm run build",
     "test:integration": "echo \"Integration tests not yet implemented. Basic connection tests would go here.\"",
     "test:e2e": "echo \"End-to-end tests not yet implemented. Full application workflow tests would go here.\""
@@ -24,25 +27,29 @@
     "@tauri-apps/api": "^2.5.0",
     "axios": "^1.6.7",
     "chromadb": "^3.0.3",
-    "date-fns": "^3.3.1",
-    "jsdom": "^24.0.0",
-    "ollama": "^0.4.4",
+    "date-fns": "^4.1.0",
+    "ollama": "^0.5.16",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^9.0.1",
-    "react-syntax-highlighter": "^15.5.0",
+    "react-syntax-highlighter": "^15.6.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.5.0",
+    "@testing-library/jest-dom": "^6.6.4",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/jsdom": "^21.1.6",
     "@types/node": "^20.11.24",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/react-syntax-highlighter": "^15.5.11",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@types/uuid": "^9.0.8",
     "@vitejs/plugin-react": "^4.2.1",
+    "jsdom": "^26.1.0",
     "typescript": "^5.3.3",
-    "vite": "^5.3.5"
+    "vite": "^7.0.6",
+    "vitest": "^3.2.4"
   }
 }
