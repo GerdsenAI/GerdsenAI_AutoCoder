@@ -5,6 +5,7 @@ mod searxng_commands;
 mod chroma_manager;
 mod lsp_server;
 mod code_analysis;
+mod context_manager;
 // mod doc_scraper;
 // mod window_manager;
 mod history_manager;
@@ -16,6 +17,7 @@ use ollama_client::{OllamaClient, SharedOllamaClient};
 use searxng_client::SearXNGClient;
 use chroma_manager::ChromaManager;
 use code_analysis::CodeAnalysisService;
+use context_manager::ContextManager;
 use history_manager::{HistoryManager, SharedHistoryManager};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -63,6 +65,9 @@ fn main() {
     // Initialize CodeAnalysisService with shared Ollama client
     let code_analysis_service = Arc::new(CodeAnalysisService::new(shared_ollama_client.clone()));
 
+    // Initialize ContextManager with default settings (128k tokens, 25k reserved)
+    let context_manager = ContextManager::default();
+
     tauri::Builder::default()
         // .manage(WindowManager::new())
         .manage(ollama_client)
@@ -70,6 +75,7 @@ fn main() {
         .manage(SearXNGClient::new(None))
         .manage(Mutex::new(chroma_manager))
         .manage(code_analysis_service)
+        .manage(context_manager)
         .setup(|app| {
             // Initialize HistoryManager
             let history_manager = HistoryManager::new(&app.handle())
@@ -113,6 +119,13 @@ fn main() {
             code_analysis::analyze_repository,
             code_analysis::fix_code,
             code_analysis::generate_code,
+            context_manager::get_context_budget,
+            context_manager::pin_file,
+            context_manager::unpin_file,
+            context_manager::calculate_file_relevance,
+            context_manager::build_context,
+            context_manager::get_pinned_files,
+            context_manager::count_file_tokens,
             // doc_scraper::scrape_documentation,
             // doc_scraper::batch_scrape_documentation,
             // doc_scraper::search_documentation,
