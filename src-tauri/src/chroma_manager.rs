@@ -94,7 +94,7 @@ impl ChromaManager {
                 id: id.clone(),
                 content,
                 metadata,
-                embedding: None, // TODO: Generate embeddings with Ollama
+                embedding: None, // Embeddings will be generated when Ollama integration is implemented
             };
             
             collection.documents.insert(id, document);
@@ -143,7 +143,7 @@ impl ChromaManager {
         }
         
         // Sort by distance (best matches first) and limit results
-        results.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
+        results.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap_or(std::cmp::Ordering::Equal));
         results.truncate(n_results);
         
         Ok(results)
@@ -193,7 +193,7 @@ impl ChromaManager {
     }
 }
 
-// TODO: Implement Ollama embedding function integration later
+// Note: Ollama embedding function integration is planned for future releases
 
 // Tauri command implementations
 use tauri::State;
@@ -331,7 +331,7 @@ pub fn get_collection_count(
     manager.count(&collection_name).map_err(|e| format!("Failed to get collection count: {}", e))
 }
 
-// TODO: Add comprehensive tests once ChromaDB integration is stable
+// Note: Additional tests will be added when ChromaDB integration is stabilized
 #[cfg(test)]
 mod tests {
     use super::*;

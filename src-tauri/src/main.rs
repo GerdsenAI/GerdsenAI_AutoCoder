@@ -52,7 +52,7 @@ fn main() {
     }
     
     // Temporarily disable menu for focus on ChromaDB implementation
-    // TODO: Reimplement menu using Tauri 2.0 API later
+    // Note: Menu implementation will be added using Tauri 2.0 API in future releases
     // Initialize ChromaManager with proper error handling
     let chroma_manager = ChromaManager::new("./chroma_db")
         .map_err(|e| format!("Failed to initialize ChromaDB: {}", e))

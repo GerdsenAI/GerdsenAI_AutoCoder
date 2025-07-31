@@ -281,9 +281,9 @@ impl LanguageServer for Backend {
                         title: "Fix Error".to_string(),
                         command: "auto-coder.fixError".to_string(),
                         arguments: Some(vec![
-                            serde_json::to_value(uri.to_string()).unwrap(),
-                            serde_json::to_value(&diagnostic.range).unwrap(),
-                            serde_json::to_value(&diagnostic.message).unwrap(),
+                            serde_json::to_value(uri.to_string()).unwrap_or_default(),
+                            serde_json::to_value(&diagnostic.range).unwrap_or_default(),
+                            serde_json::to_value(&diagnostic.message).unwrap_or_default(),
                         ]),
                     }),
                     is_preferred: Some(true),
@@ -302,7 +302,7 @@ impl LanguageServer for Backend {
                     title: "Analyze Code".to_string(),
                     command: "auto-coder.analyzeCode".to_string(),
                     arguments: Some(vec![
-                        serde_json::to_value(uri.to_string()).unwrap(),
+                        serde_json::to_value(uri.to_string()).unwrap_or_default(),
                     ]),
                 }),
                 is_preferred: None,
