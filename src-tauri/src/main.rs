@@ -24,15 +24,15 @@ use tokio::sync::Mutex;
 
 #[cfg(debug_assertions)]
 const LOG_TARGETS: [&str; 9] = [
-    "auto_coder_companion::commands",
-    "auto_coder_companion::ollama_client",
-    "auto_coder_companion::searxng_client",
-    "auto_coder_companion::chroma_manager",
-    "auto_coder_companion::lsp_server",
-    "auto_coder_companion::code_analysis",
-    "auto_coder_companion::doc_scraper",
-    "auto_coder_companion::window_manager",
-    "auto_coder_companion::history_manager",
+    "gerdsenai_socrates::commands",
+    "gerdsenai_socrates::ollama_client",
+    "gerdsenai_socrates::searxng_client",
+    "gerdsenai_socrates::chroma_manager",
+    "gerdsenai_socrates::lsp_server",
+    "gerdsenai_socrates::code_analysis",
+    "gerdsenai_socrates::doc_scraper",
+    "gerdsenai_socrates::window_manager",
+    "gerdsenai_socrates::history_manager",
 ];
 
 fn main() {
@@ -119,6 +119,9 @@ fn main() {
             code_analysis::analyze_repository,
             code_analysis::fix_code,
             code_analysis::generate_code,
+            code_analysis::analyze_dependencies,
+            code_analysis::analyze_impact,
+            code_analysis::suggest_refactorings,
             context_manager::get_context_budget,
             context_manager::pin_file,
             context_manager::unpin_file,
@@ -148,7 +151,7 @@ fn main() {
         ])
         // .menu(menu) // Disabled for now
         .run(tauri::generate_context!())
-        .expect("Error while running Auto-Coder Companion");
+        .expect("Error while running GerdsenAI Socrates");
 }
 
 // fn create_new_window(app_handle: AppHandle) {
@@ -161,7 +164,7 @@ fn main() {
 //         window_id.clone(),
 //         WindowUrl::App("index.html".into())
 //     )
-//     .title("Auto-Coder Companion")
+//     .title("GerdsenAI Socrates")
 //     .inner_size(800.0, 600.0)
 //     .build()
 //     .unwrap();

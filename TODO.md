@@ -33,10 +33,10 @@
 - Memory usage < 500MB for large repos
 
 ### **Repository-Wide Coding** 
-- [ ] **Advanced Code Analysis**
-  - [ ] Multi-file dependency analysis (build on existing LSP foundation)
-  - [ ] AI-powered refactoring suggestions 
-  - [ ] Change impact analysis system
+- [x] **Advanced Code Analysis**
+  - [x] Multi-file dependency analysis (build on existing LSP foundation)
+  - [x] AI-powered refactoring suggestions 
+  - [x] Change impact analysis system
   - [ ] Parallelize analysis with futures::stream
 
 - [ ] **Automated Code Generation**

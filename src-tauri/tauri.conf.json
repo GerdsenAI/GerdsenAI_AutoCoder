@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "CSE-Icon AutoCoder",
+  "productName": "GerdsenAI Socrates",
   "version": "1.0.0",
-  "identifier": "com.cseicon.autocoder",
+  "identifier": "com.gerdsenai.socrates",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -15,7 +15,7 @@
     },
     "windows": [
       {
-        "title": "CSE-Icon AutoCoder",
+        "title": "GerdsenAI Socrates",
         "width": 800,
         "height": 600,
         "minWidth": 400,

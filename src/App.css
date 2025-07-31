@@ -567,6 +567,45 @@ body[data-theme="dark"] {
   animation: pulse 1.5s infinite;
 }
 
+/* Code analysis styles */
+.code-analysis-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.code-analysis-tabs {
+  display: flex;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+}
+
+.code-tab {
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: border-color var(--transition-speed), color var(--transition-speed);
+  font-size: 0.95rem;
+}
+
+.code-tab:hover {
+  color: var(--accent-hover);
+}
+
+.code-tab.active {
+  border-bottom: 2px solid var(--accent-color);
+  color: var(--accent-color);
+}
+
+.code-analysis-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  background-color: var(--bg-primary);
+}
+
 /* Sidebar integration styles */
 .sidebar-container {
   width: 350px;

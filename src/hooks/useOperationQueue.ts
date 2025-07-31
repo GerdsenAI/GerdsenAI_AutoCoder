@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 
 export enum OperationType {
   AICompletion = 'AICompletion',
@@ -107,10 +107,10 @@ export function useOperationQueue() {
         }));
         // Stop polling if operation is in terminal state
         if (
-          status.Completed ||
-          status.Failed ||
-          status.Cancelled ||
-          status.TimedOut
+          'Completed' in status ||
+          'Failed' in status ||
+          'Cancelled' in status ||
+          'TimedOut' in status
         ) {
           clearInterval(interval);
         }

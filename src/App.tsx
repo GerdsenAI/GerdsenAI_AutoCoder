@@ -6,12 +6,16 @@ import ModelSelector from './components/ModelSelector';
 import RAGPanel from './components/RAGPanel';
 import SearchPanel from './components/SearchPanel';
 import HistoryPanel from './components/HistoryPanel';
+import DependencyGraph from './components/DependencyGraph';
+import ImpactAnalysisPanel from './components/ImpactAnalysisPanel';
+import CodeRefactoringPanel from './components/CodeRefactoringPanel';
 import { ChatSession, ChatMessage } from './types';
 import { OperationMonitor } from './components/OperationMonitor';
 import { OperationTestButton } from './components/OperationTestButton';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'search' | 'rag' | 'history'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'search' | 'rag' | 'history' | 'code'>('chat');
+  const [codeAnalysisTab, setCodeAnalysisTab] = useState<'dependency' | 'impact' | 'refactor'>('dependency');
   const [selectedModel, setSelectedModel] = useState<string>('llama3');
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
@@ -59,24 +63,25 @@ function App() {
     }
   }, [selectedModel]);
 
-  const updateSession = useCallback(async (session: ChatSession) => {
-    try {
-      await invoke('update_chat_session', { session });
+  // Left for future implementation
+  // const updateSession = useCallback(async (session: ChatSession) => {
+  //   try {
+  //     await invoke('update_chat_session', { session });
       
-      // Reload sessions to get the updated data
-      const sessions = await invoke<ChatSession[]>('list_chat_sessions');
-      setChatSessions(sessions);
+  //     // Reload sessions to get the updated data
+  //     const sessions = await invoke<ChatSession[]>('list_chat_sessions');
+  //     setChatSessions(sessions);
       
-      if (currentSession?.id === session.id) {
-        const updatedSession = sessions.find(s => s.id === session.id);
-        if (updatedSession) {
-          setCurrentSession(updatedSession);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to update session:', error);
-    }
-  }, [currentSession]);
+  //     if (currentSession?.id === session.id) {
+  //       const updatedSession = sessions.find(s => s.id === session.id);
+  //       if (updatedSession) {
+  //         setCurrentSession(updatedSession);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to update session:', error);
+  //   }
+  // }, [currentSession]);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     try {
@@ -144,7 +149,7 @@ function App() {
     <div className="app-container">
       <div className="header">
         <div className="logo-container">
-          <img src="/assets/cse-icon-logo.png" alt="CSE Icon" className="logo-image" />
+          <img src="/assets/gerdsenai/s-logo.png" alt="GerdsenAI Socrates" className="logo-image" />
         </div>
         <div className="connection-status">
           <div className="status-indicator status-connected"></div>
@@ -185,6 +190,12 @@ function App() {
         >
           History
         </div>
+        <div 
+          className={`nav-tab ${activeTab === 'code' ? 'active' : ''}`}
+          onClick={() => setActiveTab('code')}
+        >
+          Code Analysis
+        </div>
       </div>
       
       <div className="content-area">
@@ -220,6 +231,45 @@ function App() {
             onDeleteSession={deleteSession}
             onCreateNewSession={createNewSession}
           />
+        )}
+        
+        {activeTab === 'code' && (
+          <div className="code-analysis-container">
+            <div className="code-analysis-tabs">
+              <div 
+                className={`code-tab ${codeAnalysisTab === 'dependency' ? 'active' : ''}`}
+                onClick={() => setCodeAnalysisTab('dependency')}
+              >
+                Dependency Graph
+              </div>
+              <div 
+                className={`code-tab ${codeAnalysisTab === 'impact' ? 'active' : ''}`}
+                onClick={() => setCodeAnalysisTab('impact')}
+              >
+                Impact Analysis
+              </div>
+              <div 
+                className={`code-tab ${codeAnalysisTab === 'refactor' ? 'active' : ''}`}
+                onClick={() => setCodeAnalysisTab('refactor')}
+              >
+                Refactoring
+              </div>
+            </div>
+            
+            <div className="code-analysis-content">
+              {codeAnalysisTab === 'dependency' && (
+                <DependencyGraph repoPath={currentSession?.context?.repository_path || '.'} />
+              )}
+              
+              {codeAnalysisTab === 'impact' && (
+                <ImpactAnalysisPanel repoPath={currentSession?.context?.repository_path || '.'} />
+              )}
+              
+              {codeAnalysisTab === 'refactor' && (
+                <CodeRefactoringPanel repoPath={currentSession?.context?.repository_path || '.'} />
+              )}
+            </div>
+          </div>
         )}
       </div>
       

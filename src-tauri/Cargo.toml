@@ -1,10 +1,10 @@
 [package]
-name = "auto-coder-companion"
+name = "gerdsenai-socrates"
 version = "1.0.0"
-description = "A production-ready, cross-platform AI coding assistant"
-authors = ["CSE ICON Software"]
+description = "GerdsenAI Socrates - Advanced AI coding assistant"
+authors = ["GerdsenAI"]
 license = ""
-repository = "https://github.com/cse-icon/auto-coder-companion"
+repository = "https://github.com/GerdsenAI/GerdsenAI_AutoCoder"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

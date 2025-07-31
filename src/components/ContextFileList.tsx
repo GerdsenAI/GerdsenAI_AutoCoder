@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import './ContextFileList.css';
 
 export interface ContextFile {

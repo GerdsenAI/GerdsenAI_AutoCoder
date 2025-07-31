@@ -1,5 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { useState, useCallback } from 'react';
 import './ContextControls.css';
 
 export interface ContextSettings {

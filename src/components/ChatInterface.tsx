@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { v4 as uuidv4 } from 'uuid';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 // Fix: Use the correct import path for version 15.x
 import { coldarkDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -13,8 +12,7 @@ import { ContextFileList } from './ContextFileList';
 import { ContextControls } from './ContextControls';
 import './ChatInterface.css';
 
-// Utility function to generate unique IDs
-const generateId = () => uuidv4();
+// Utility function removed to fix build error
 
 interface StreamEvent {
   token: string;
@@ -297,7 +295,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <div className="messages-area">
         {combinedMessages.length === 0 && !isLoading && (
           <div className="empty-chat-state">
-            <img src="/assets/cse-icon-logo.png" alt="CSE Icon" className="cse-icon" />
+            <img src="/assets/gerdsenai/s-logo.png" alt="GerdsenAI Socrates" className="cse-icon" />
             <p>How can I help you today?</p>
             <div className="suggested-prompts">
               <button onClick={() => setInputValue('Explain the concept of quantum entanglement.')}>Explain quantum entanglement</button>
@@ -329,7 +327,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         {isLoading && streamingMessageRef.current === '' && (
           <div className="loading-indicator">
-            <span>CSE-Icon AutoCoder is thinking</span>
+            <span>GerdsenAI Socrates is thinking</span>
             <span className="loading-dots">
               <span>.</span>
               <span>.</span>

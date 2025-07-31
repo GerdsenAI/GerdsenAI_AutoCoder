@@ -1,8 +1,8 @@
-# CSE-Icon AutoCoder
+# GerdsenAI Socrates
 
 ## WIP...
 
-![CSE-Icon AutoCoder](./public/assets/cse-icon-logo.png)
+![GerdsenAI Socrates](./public/assets/gerdsenai/s-logo.png)
 
 ## Features
 
@@ -90,4 +90,4 @@ npm run tauri build
 
 ## License
 
-Copyright © 2025 CSE-Icon Software. All rights reserved.
+Copyright © 2025 GerdsenAI. All rights reserved.
