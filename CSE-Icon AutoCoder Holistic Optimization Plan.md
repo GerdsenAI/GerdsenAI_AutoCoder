@@ -124,6 +124,26 @@ This document outlines a comprehensive optimization plan for the CSE-Icon AutoCo
 - Test context storage
 - Verify retrieval and continuation
 
+### Context Window Management
+- **Pragmatic Implementation Approach**
+  - Start with MVP: Simple sliding window + RAG
+  - Visual token budget management (see mockups/context-window-visualizer.html)
+  - User control over file inclusion/exclusion
+  - Transparent relevance scoring
+  
+- **Phased Rollout**
+  - Phase 1: Basic token counting and visualization
+  - Phase 2: Smart truncation and summarization
+  - Phase 3: User presets and advanced controls
+  - Phase 4: Performance optimization based on real usage
+  
+- **Key Features**
+  - Real-time token budget visualization
+  - Manual file pinning capabilities
+  - Context presets for common tasks
+  - Relevance score transparency
+  - Memory-efficient implementation
+
 ## 4. Windows 11 Compatibility
 
 ### Build System Configuration

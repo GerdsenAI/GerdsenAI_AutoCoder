@@ -193,46 +193,67 @@ Based on comprehensive audit findings, this roadmap addresses the **60% feature 
     - ✅ Show RAG context indicators when documents are used
     - ✅ Added CSS styling for RAG UI elements
 
-- [ ] **Future-Proof Context Window Management** 🚀 **NEXT PRIORITY**
-  - [ ] **Dynamic Token-Aware Context Loading**
-    - [ ] Implement accurate token counting for each model type
-    - [ ] Dynamic loading until 80% of model's context limit
-    - [ ] Reserve 20% for conversation and response
+- [ ] **Pragmatic Context Window Management** ? **NEXT PRIORITY**
+  - [ ] **Phase 1: MVP Implementation (Week 1)**
+    - [ ] Basic sliding window with RAG integration
+    - [ ] Simple token counting with 20% safety margin
+    - [ ] Visual token budget bar (see mockup: `mockups/context-window-visualizer.html`)
+    - [ ] Manual file pinning/exclusion
+    
+  - [ ] **Phase 2: Smart Truncation (Week 2)**
+    - [ ] Middle-truncation for large files (keep start/end)
+    - [ ] Importance markers for user-edited sections
+    - [ ] Basic summarization for excluded content
+    - [ ] Context usage visualization in UI
+    
+  - [ ] **Phase 3: User Control & Transparency (Week 3)**
+    - [ ] "Force include" and pattern exclusion settings
+    - [ ] Show WHY files are included (relevance scores)
+    - [ ] Context presets (Debug, Refactor, Document, etc.)
+    - [ ] Real-time token budget updates
+    
+  - [ ] **Phase 4: Performance & Scale (Week 4+)**
+    - [ ] Incremental embedding updates for changed files
+    - [ ] Pre-fetch likely contexts during idle time
+    - [ ] Memory-bounded caching with LRU eviction
+    - [ ] A/B test different context strategies
   
-  - [ ] **Hierarchical Context System**
-    - [ ] Level 1: Current conversation (highest priority)
-    - [ ] Level 2: Recent RAG results (semantic relevance)
-    - [ ] Level 3: Session history (temporal relevance)
-    - [ ] Level 4: Project-wide context (background knowledge)
+  - [ ] **Core Implementation Structure**
+    ```rust
+    pub struct ContextManager {
+        max_tokens: usize,
+        reserved_tokens: usize,
+        
+        pub fn build_context(&self, 
+            conversation: &[Message], 
+            rag_results: &[Document],
+            user_preferences: &ContextPrefs
+        ) -> Context {
+            let mut budget = self.max_tokens - self.reserved_tokens;
+            let mut context = Context::new();
+            
+            // 1. Always include current conversation
+            context.add_conversation(conversation, &mut budget);
+            
+            // 2. Add RAG results by relevance
+            context.add_rag_results(rag_results, &mut budget);
+            
+            // 3. Add pinned files if room
+            context.add_pinned_files(user_preferences, &mut budget);
+            
+            // 4. Fill remaining with smart suggestions
+            context.fill_remaining(project_context, &mut budget);
+            
+            context
+        }
+    }
+    ```
   
-  - [ ] **Smart Chunking & Compression**
-    - [ ] Semantic document chunking (functions, classes, paragraphs)
-    - [ ] Context compression into summaries for older content
-    - [ ] Embedding-based chunk relevance scoring
-    - [ ] Dynamic chunk sizing based on available space
-  
-  - [ ] **Context Streaming Architecture**
-    - [ ] On-demand context fetching during generation
-    - [ ] Context server for lazy loading large documents
-    - [ ] Streaming interface for real-time updates
-  
-  - [ ] **Model-Specific Adapters**
-    - [ ] Claude 3 adapter (200k tokens)
-    - [ ] GPT-4 Turbo adapter (128k tokens)
-    - [ ] Llama 3 adapter (8k-32k tokens)
-    - [ ] Future model support (1M+ tokens)
-  
-  - [ ] **Advanced Caching Strategy**
-    - [ ] Permanent embedding cache
-    - [ ] Multi-granularity summary cache
-    - [ ] Document relevance score cache
-    - [ ] In-memory session context cache
-  
-  - [ ] **Context Priority Algorithm**
-    - [ ] Relevance scoring (semantic similarity)
-    - [ ] Recency scoring (temporal relevance)
-    - [ ] Frequency scoring (access patterns)
-    - [ ] Importance scoring (user/AI determined)
+  - [ ] **Success Metrics**
+    - [ ] 80% of context value with 20% of complexity
+    - [ ] User can see and control context in < 3 clicks
+    - [ ] Context building takes < 100ms for average project
+    - [ ] Memory usage stays under 500MB even for large repos
 
 ### **Repository-Wide Coding** 🚀 **Sprint 2 Focus**
 - [ ] **Advanced Code Analysis**
