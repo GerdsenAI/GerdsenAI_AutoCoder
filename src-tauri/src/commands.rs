@@ -1,5 +1,6 @@
 use crate::ollama_client::{OllamaClient, ChatMessage, GenerateOptions};
 use crate::chroma_manager::ChromaManager;
+use crate::operation_manager::{Operation, OperationStatus};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State, Emitter};
 use tokio::sync::Mutex;
@@ -334,4 +335,28 @@ pub async fn generate_stream_with_ollama(
             }));
         })
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn enqueue_operation(
+    operation: Operation,
+    op_manager: State<'_, crate::operation_manager::OperationManager>,
+) -> Result<String, String> {
+    op_manager.enqueue_operation(operation).await
+}
+
+#[tauri::command]
+pub fn get_operation_status(
+    operation_id: String,
+    op_manager: State<'_, crate::operation_manager::OperationManager>,
+) -> Option<OperationStatus> {
+    op_manager.get_operation_status(&operation_id)
+}
+
+#[tauri::command]
+pub fn cancel_operation(
+    operation_id: String,
+    op_manager: State<'_, crate::operation_manager::OperationManager>,
+) -> Result<(), String> {
+    op_manager.cancel_operation(&operation_id)
 }

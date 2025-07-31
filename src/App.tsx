@@ -7,6 +7,8 @@ import RAGPanel from './components/RAGPanel';
 import SearchPanel from './components/SearchPanel';
 import HistoryPanel from './components/HistoryPanel';
 import { ChatSession, ChatMessage } from './types';
+import { OperationMonitor } from './components/OperationMonitor';
+import { OperationTestButton } from './components/OperationTestButton';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'chat' | 'search' | 'rag' | 'history'>('chat');
@@ -187,11 +189,15 @@ function App() {
       
       <div className="content-area">
         {activeTab === 'chat' && currentSession && (
-          <ChatInterface 
-            session={currentSession}
-            onSendMessage={addMessageToCurrentSession}
-            model={selectedModel}
-          />
+          <>
+            <ChatInterface 
+              session={currentSession}
+              onSendMessage={addMessageToCurrentSession}
+              model={selectedModel}
+            />
+            <OperationTestButton />
+            <OperationMonitor />
+          </>
         )}
         
         {activeTab === 'search' && (

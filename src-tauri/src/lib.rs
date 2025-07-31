@@ -3,6 +3,7 @@
 // Import modules for testing
 pub mod searxng_client;
 pub mod searxng_commands;
+pub mod operation_manager;
 
 #[cfg(test)]
 mod tests;
@@ -12,11 +13,27 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+use operation_manager::{OperationManager, ResourceLimits};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let num_cpus = num_cpus::get();
+    let resource_limits = ResourceLimits {
+        max_concurrent_operations: num_cpus * 2,
+        max_memory_usage: 1024, // 1GB
+        max_cpu_usage: 0.8,     // 80%
+        io_throttling: true,
+    };
+    let operation_manager = OperationManager::new(resource_limits);
     tauri::Builder::default()
         // .plugin(tauri_plugin_opener::init()) // Commented out - using main.rs setup instead
-        .invoke_handler(tauri::generate_handler![greet])
+        .manage(operation_manager)
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            crate::commands::enqueue_operation,
+            crate::commands::get_operation_status,
+            crate::commands::cancel_operation,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

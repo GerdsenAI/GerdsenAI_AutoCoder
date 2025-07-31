@@ -181,6 +181,8 @@
   - Implement worker thread pools for CPU-intensive tasks
   - Add operation queuing and prioritization
   - Create resource usage balancing
+- [ ] **Batch Processing** - Batched embeddings, bulk document processing
+- [ ] **Advanced Caching** - Query result caching, smart invalidation
 
 ### **Scalability Improvements**
 - [ ] **Batch Processing**
