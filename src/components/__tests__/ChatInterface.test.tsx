@@ -144,7 +144,7 @@ describe('ChatInterface', () => {
     });
     
     // Store reference for later use in tests
-    window.mockWriteText = mockWriteText;
+    (window as any).mockWriteText = mockWriteText;
     mockWriteText.mockClear();
 
     // Mock scrollIntoView
@@ -243,7 +243,10 @@ describe('ChatInterface', () => {
         prompt: 'Test message',
         useRag: false,
         sessionId: 'test-session-1',
-        collection: 'default'
+        collection: 'default',
+        analysisMode: 'standard',
+        maxRounds: 5,
+        saveToRAG: true
       });
     });
 
@@ -424,7 +427,10 @@ describe('ChatInterface', () => {
         prompt: 'Test with RAG',
         useRag: true,
         sessionId: 'test-session-1',
-        collection: 'default'
+        collection: 'default',
+        analysisMode: 'standard',
+        maxRounds: 5,
+        saveToRAG: true
       });
     });
 
@@ -525,9 +531,10 @@ describe('ChatInterface', () => {
     it('handles message generation errors', async () => {
       const user = userEvent.setup();
       
-      // Mock the first invoke call (list_chroma_collections) to succeed
+      // Mock the initialization calls to succeed, then the generate call to fail
       mockInvoke
         .mockResolvedValueOnce(['default', 'custom']) // list_chroma_collections
+        .mockResolvedValueOnce([]) // list_mcp_tools
         .mockRejectedValueOnce(new Error('Network failure')); // generate_stream_with_ollama
       
       render(

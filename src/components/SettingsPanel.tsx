@@ -149,7 +149,7 @@ export const SettingsPanel: React.FC = () => {
       name: template.name,
       command: template.command,
       args: template.args,
-      env: template.env
+      env: template.env as Record<string, string>
     });
     setShowAddServer(true);
   };
