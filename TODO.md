@@ -132,6 +132,58 @@
     - [ ] Average resolution in < 5 question rounds
     - [ ] RAG pattern reuse rate > 30%
 
+### **MCP Server Integration** ? **Sprint 2 Enhancement**
+- [ ] **User-Configurable MCP Extensions**
+  - [ ] Keep core services built-in (Ollama, SearXNG, ChromaDB, LSP)
+  - [ ] Add MCP client support for user extensions
+  
+  - [ ] **MCP Configuration UI** (see mockup: `mockups/mcp-config-ui.html`)
+    - [ ] Settings/Integrations panel
+    - [ ] Add/remove MCP servers
+    - [ ] Configure command, args, environment
+    - [ ] Test connection functionality
+    - [ ] Popular servers quick-add gallery
+  
+  - [ ] **Backend MCP Client**
+    ```rust
+    pub struct MCPManager {
+        servers: HashMap<String, MCPServer>,
+        active_connections: HashMap<String, MCPConnection>,
+    }
+    
+    impl MCPManager {
+        pub async fn add_server(&mut self, config: MCPServerConfig) -> Result<()>;
+        pub async fn connect(&mut self, server_id: &str) -> Result<()>;
+        pub async fn call_tool(&self, server: &str, tool: &str, args: Value) -> Result<Value>;
+        pub async fn list_tools(&self, server: &str) -> Result<Vec<Tool>>;
+    }
+    ```
+  
+  - [ ] **Tool Discovery & Integration**
+    - [ ] Dynamic tool discovery from MCP servers
+    - [ ] Expose tools to chat interface
+    - [ ] Show available tools in UI
+    - [ ] Handle tool permissions/sandboxing
+  
+  - [ ] **Persistence & Config**
+    - [ ] Save MCP configurations to user settings
+    - [ ] Auto-start enabled servers on app launch
+    - [ ] Secure storage for API keys/tokens
+    - [ ] Import/export server configurations
+  
+  - [ ] **Popular MCP Servers Support**
+    - [ ] Filesystem - Enhanced file operations
+    - [ ] GitHub - Repository integration
+    - [ ] Sequential Thinking - Complex reasoning
+    - [ ] Brave Search - Alternative search
+    - [ ] Custom user servers
+  
+  - [ ] **Success Metrics**
+    - [ ] < 30s to add and connect new MCP server
+    - [ ] Zero core functionality impact
+    - [ ] 95% server connection success rate
+    - [ ] Tool calls < 500ms latency
+
 ### **Repository-Wide Coding** 
 - [x] **Advanced Code Analysis**
   - [x] Multi-file dependency analysis (build on existing LSP foundation)

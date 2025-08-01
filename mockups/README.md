@@ -46,3 +46,23 @@ An interactive prototype demonstrating the Deep Analysis Mode interface for comp
 - Visual distinction for deep analysis conversations
 
 This mockup shows how complex debugging features can be optional power tools rather than constant overhead.
+
+## MCP Server Configuration
+
+**File**: `mcp-config-ui.html`
+
+An interactive prototype for the MCP (Model Context Protocol) server configuration interface.
+
+### Features Demonstrated:
+- **Core Services Display**: Shows built-in services (Ollama, SearXNG, ChromaDB, LSP)
+- **MCP Server Management**: Add, configure, enable/disable MCP servers
+- **Tool Discovery**: Display available tools from connected servers
+- **Quick Add Gallery**: Popular MCP servers for one-click installation
+
+### Key Design Decisions:
+- Core services remain built-in and always available
+- MCP servers are optional extensions
+- Clear visual distinction between core and extended functionality
+- User-friendly configuration without command-line knowledge
+
+This design allows power users to extend AutoCoder while keeping the core experience simple and reliable.

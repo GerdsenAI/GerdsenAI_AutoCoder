@@ -99,7 +99,13 @@ The application follows a modular architecture with clear separation of concerns
    - Auto-saves successful debugging patterns to RAG
    - Smart activation on complex problems
    - Time-boxed questioning rounds
-4. **Repository-Wide Coding**: Advanced code analysis, automated generation, multi-file dependencies
+4. **MCP Server Integration**: User-configurable extensions via Model Context Protocol
+   - Core services remain built-in (Ollama, SearXNG, ChromaDB, LSP)
+   - Add/configure MCP servers through Settings UI
+   - Popular servers quick-add gallery
+   - Dynamic tool discovery and integration
+   - Secure API key management
+5. **Repository-Wide Coding**: Advanced code analysis, automated generation, multi-file dependencies
 4. **IDE Integration**: Real VS Code and Visual Studio extension implementations
 
 ### Data Flow
