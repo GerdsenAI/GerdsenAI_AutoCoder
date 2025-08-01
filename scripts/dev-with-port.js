@@ -83,7 +83,7 @@ function startVite(port) {
   
   const viteProcess = spawn('npx', ['vite', '--port', port.toString()], {
     stdio: 'inherit',
-    shell: true,
+    shell: false, // Fixed DEP0190: removed shell: true for security
     env: { ...process.env, VITE_DEV_PORT: port.toString() }
   });
   
@@ -110,7 +110,7 @@ function startTauri(port) {
   
   const tauriProcess = spawn('npx', ['tauri', 'dev'], {
     stdio: 'inherit',
-    shell: true,
+    shell: false, // Fixed DEP0190: removed shell: true for security
     env: { ...process.env, VITE_DEV_PORT: port.toString() }
   });
   
