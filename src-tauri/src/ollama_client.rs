@@ -1,9 +1,11 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use futures_util::StreamExt;
+use bytes::Bytes;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ModelInfo {
@@ -93,6 +95,125 @@ pub struct EmbeddingResponse {
 
 // Type alias for shared Ollama client
 pub type SharedOllamaClient = Arc<Mutex<OllamaClient>>;
+
+/// Efficient streaming buffer for handling Ollama responses
+#[derive(Debug)]
+pub struct StreamingBuffer {
+    buffer: Vec<u8>,
+    max_buffer_size: usize,
+    chunk_queue: VecDeque<Bytes>,
+    total_queued_bytes: usize,
+    max_queue_size: usize,
+}
+
+impl StreamingBuffer {
+    pub fn new() -> Self {
+        Self {
+            buffer: Vec::with_capacity(8192), // 8KB initial capacity
+            max_buffer_size: 1024 * 1024, // 1MB max buffer size
+            chunk_queue: VecDeque::new(),
+            total_queued_bytes: 0,
+            max_queue_size: 10 * 1024 * 1024, // 10MB max queue size
+        }
+    }
+
+    pub fn with_capacity(buffer_size: usize, queue_size: usize) -> Self {
+        Self {
+            buffer: Vec::with_capacity(buffer_size.min(8192)),
+            max_buffer_size: buffer_size,
+            chunk_queue: VecDeque::new(),
+            total_queued_bytes: 0,
+            max_queue_size: queue_size,
+        }
+    }
+
+    /// Add incoming chunk to the processing queue
+    pub fn enqueue_chunk(&mut self, chunk: Bytes) -> Result<(), Box<dyn Error>> {
+        if self.total_queued_bytes + chunk.len() > self.max_queue_size {
+            return Err("Stream buffer queue overflow - client consuming too slowly".into());
+        }
+        
+        self.total_queued_bytes += chunk.len();
+        self.chunk_queue.push_back(chunk);
+        Ok(())
+    }
+
+    /// Process queued chunks and extract complete JSON lines
+    pub fn process_chunks<F>(&mut self, mut callback: F) -> Result<bool, Box<dyn Error>>
+    where
+        F: FnMut(&str) -> Result<bool, Box<dyn Error>>, // Returns true if should continue
+    {
+        // Process all queued chunks
+        while let Some(chunk) = self.chunk_queue.pop_front() {
+            self.total_queued_bytes -= chunk.len();
+            
+            // Add chunk to working buffer
+            if self.buffer.len() + chunk.len() > self.max_buffer_size {
+                // Buffer overflow protection - clear buffer and start fresh
+                self.buffer.clear();
+                return Err("Stream buffer overflow - single message too large".into());
+            }
+            
+            self.buffer.extend_from_slice(&chunk);
+        }
+
+        // Extract complete JSON lines from buffer
+        let mut start = 0;
+        let mut should_continue = true;
+        
+        for i in 0..self.buffer.len() {
+            if self.buffer[i] == b'\n' {
+                if let Ok(line) = std::str::from_utf8(&self.buffer[start..i]) {
+                    if !line.trim().is_empty() {
+                        should_continue = callback(line.trim())?;
+                        if !should_continue {
+                            break;
+                        }
+                    }
+                }
+                start = i + 1;
+            }
+        }
+        
+        // Keep any incomplete data in the buffer
+        if start > 0 {
+            self.buffer.drain(0..start);
+        }
+        
+        Ok(should_continue)
+    }
+
+    /// Get buffer usage statistics
+    pub fn get_stats(&self) -> BufferStats {
+        BufferStats {
+            buffer_size: self.buffer.len(),
+            max_buffer_size: self.max_buffer_size,
+            queued_chunks: self.chunk_queue.len(),
+            total_queued_bytes: self.total_queued_bytes,
+            max_queue_size: self.max_queue_size,
+            buffer_utilization: (self.buffer.len() as f32 / self.max_buffer_size as f32) * 100.0,
+            queue_utilization: (self.total_queued_bytes as f32 / self.max_queue_size as f32) * 100.0,
+        }
+    }
+
+    /// Clear all buffers and reset state
+    pub fn clear(&mut self) {
+        self.buffer.clear();
+        self.chunk_queue.clear();
+        self.total_queued_bytes = 0;
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct BufferStats {
+    pub buffer_size: usize,
+    pub max_buffer_size: usize,
+    pub queued_chunks: usize,
+    pub total_queued_bytes: usize,
+    pub max_queue_size: usize,
+    pub buffer_utilization: f32,
+    pub queue_utilization: f32,
+}
 
 #[derive(Clone)]
 pub struct OllamaClient {
@@ -216,35 +337,103 @@ impl OllamaClient {
         }
         
         let mut stream = response.bytes_stream();
-        let mut buffer = Vec::new();
+        let mut streaming_buffer = StreamingBuffer::new();
         
         while let Some(chunk) = stream.next().await {
             let chunk = chunk?;
-            buffer.extend_from_slice(&chunk);
             
-            // Process complete JSON objects from the buffer
-            let mut start = 0;
-            for i in 0..buffer.len() {
-                if buffer[i] == b'\n' {
-                    if let Ok(line) = std::str::from_utf8(&buffer[start..i]) {
-                        if !line.is_empty() {
-                            if let Ok(response) = serde_json::from_str::<GenerateResponse>(line) {
-                                callback(&response.response);
-                                
-                                if response.done.unwrap_or(false) {
-                                    return Ok(());
-                                }
-                            }
-                        }
+            // Enqueue the chunk for processing
+            streaming_buffer.enqueue_chunk(chunk)?;
+            
+            // Process all available complete JSON lines
+            let should_continue = streaming_buffer.process_chunks(|line| {
+                if let Ok(response) = serde_json::from_str::<GenerateResponse>(line) {
+                    callback(&response.response);
+                    
+                    if response.done.unwrap_or(false) {
+                        return Ok(false); // Signal completion
                     }
-                    start = i + 1;
+                }
+                Ok(true) // Continue processing
+            })?;
+            
+            if !should_continue {
+                break;
+            }
+        }
+        
+        Ok(())
+    }
+
+    /// Generate stream with buffer statistics callback for monitoring
+    pub async fn generate_stream_with_stats<F, S>(
+        &self,
+        model: &str,
+        prompt: &str,
+        options: Option<GenerateOptions>,
+        mut callback: F,
+        mut stats_callback: Option<S>,
+    ) -> Result<(), Box<dyn Error>>
+    where
+        F: FnMut(&str) + Send + 'static,
+        S: FnMut(BufferStats) + Send + 'static,
+    {
+        let url = format!("{}/api/generate", self.base_url);
+        
+        let request = GenerateRequest {
+            model: model.to_string(),
+            prompt: prompt.to_string(),
+            stream: true,
+            options,
+        };
+        
+        let response = self.client.post(&url)
+            .json(&request)
+            .send()
+            .await?;
+            
+        if !response.status().is_success() {
+            return Err(format!("Failed to generate stream: {}", response.status()).into());
+        }
+        
+        let mut stream = response.bytes_stream();
+        let mut streaming_buffer = StreamingBuffer::new();
+        let mut chunk_count = 0;
+        
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk?;
+            chunk_count += 1;
+            
+            // Enqueue the chunk for processing
+            streaming_buffer.enqueue_chunk(chunk)?;
+            
+            // Report buffer stats every 10 chunks
+            if let Some(ref mut stats_cb) = stats_callback {
+                if chunk_count % 10 == 0 {
+                    stats_cb(streaming_buffer.get_stats());
                 }
             }
             
-            // Keep any incomplete data in the buffer
-            if start > 0 {
-                buffer.drain(0..start);
+            // Process all available complete JSON lines
+            let should_continue = streaming_buffer.process_chunks(|line| {
+                if let Ok(response) = serde_json::from_str::<GenerateResponse>(line) {
+                    callback(&response.response);
+                    
+                    if response.done.unwrap_or(false) {
+                        return Ok(false); // Signal completion
+                    }
+                }
+                Ok(true) // Continue processing
+            })?;
+            
+            if !should_continue {
+                break;
             }
+        }
+        
+        // Final stats report
+        if let Some(ref mut stats_cb) = stats_callback {
+            stats_cb(streaming_buffer.get_stats());
         }
         
         Ok(())
@@ -285,44 +474,35 @@ impl OllamaClient {
             return Ok(chat_response.message);
         }
         
-        // Handle streaming response
+        // Handle streaming response with efficient buffer
         let mut stream = response.bytes_stream();
-        let mut buffer = Vec::new();
+        let mut streaming_buffer = StreamingBuffer::new();
         let mut full_response = String::new();
         
         while let Some(chunk) = stream.next().await {
             let chunk = chunk?;
-            buffer.extend_from_slice(&chunk);
             
-            // Process complete JSON objects from the buffer
-            let mut start = 0;
-            for i in 0..buffer.len() {
-                if buffer[i] == b'\n' {
-                    if let Ok(line) = std::str::from_utf8(&buffer[start..i]) {
-                        if !line.is_empty() {
-                            if let Ok(response) = serde_json::from_str::<ChatResponse>(line) {
-                                if let Some(ref mut cb) = callback {
-                                    cb(&response.message.content);
-                                }
-                                
-                                full_response.push_str(&response.message.content);
-                                
-                                if response.done.unwrap_or(false) {
-                                    return Ok(ChatMessage {
-                                        role: "assistant".to_string(),
-                                        content: full_response,
-                                    });
-                                }
-                            }
-                        }
+            // Enqueue the chunk for processing
+            streaming_buffer.enqueue_chunk(chunk)?;
+            
+            // Process all available complete JSON lines
+            let should_continue = streaming_buffer.process_chunks(|line| {
+                if let Ok(response) = serde_json::from_str::<ChatResponse>(line) {
+                    if let Some(ref mut cb) = callback {
+                        cb(&response.message.content);
                     }
-                    start = i + 1;
+                    
+                    full_response.push_str(&response.message.content);
+                    
+                    if response.done.unwrap_or(false) {
+                        return Ok(false); // Signal completion
+                    }
                 }
-            }
+                Ok(true) // Continue processing
+            })?;
             
-            // Keep any incomplete data in the buffer
-            if start > 0 {
-                buffer.drain(0..start);
+            if !should_continue {
+                break;
             }
         }
         

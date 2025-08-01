@@ -9,6 +9,7 @@ mod context_manager;
 mod analysis_engine;
 mod mcp_manager;
 mod mcp_commands;
+mod thread_pool_manager;
 // mod doc_scraper;
 // mod window_manager;
 mod history_manager;
@@ -22,6 +23,7 @@ use chroma_manager::ChromaManager;
 use code_analysis::CodeAnalysisService;
 use context_manager::ContextManager;
 use mcp_manager::MCPManager;
+use thread_pool_manager::ThreadPoolManager;
 use history_manager::{HistoryManager, SharedHistoryManager};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -74,6 +76,9 @@ fn main() {
     
     // Initialize MCPManager for Model Context Protocol extensions
     let mcp_manager = MCPManager::new();
+    
+    // Initialize ThreadPoolManager for CPU-intensive tasks
+    let thread_pool_manager = ThreadPoolManager::new();
 
     tauri::Builder::default()
         // .manage(WindowManager::new())
@@ -84,6 +89,7 @@ fn main() {
         .manage(code_analysis_service)
         .manage(context_manager)
         .manage(mcp_manager)
+        .manage(thread_pool_manager)
         .setup(|app| {
             // Initialize HistoryManager
             let history_manager = HistoryManager::new(&app.handle())
@@ -113,6 +119,11 @@ fn main() {
             chroma_manager::get_documents_from_chroma,
             chroma_manager::delete_documents_from_chroma,
             chroma_manager::get_collection_count,
+            chroma_manager::get_rag_cache_stats,
+            chroma_manager::clear_rag_cache,
+            chroma_manager::invalidate_collection_cache,
+            chroma_manager::get_batch_processing_stats,
+            chroma_manager::is_batch_processing_enabled,
             lsp_server::initialize_lsp_server,
             lsp_server::shutdown_lsp_server,
             lsp_server::lsp_open_document,
