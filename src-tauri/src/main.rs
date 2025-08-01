@@ -6,6 +6,9 @@ mod chroma_manager;
 mod lsp_server;
 mod code_analysis;
 mod context_manager;
+mod analysis_engine;
+mod mcp_manager;
+mod mcp_commands;
 // mod doc_scraper;
 // mod window_manager;
 mod history_manager;
@@ -18,6 +21,7 @@ use searxng_client::SearXNGClient;
 use chroma_manager::ChromaManager;
 use code_analysis::CodeAnalysisService;
 use context_manager::ContextManager;
+use mcp_manager::MCPManager;
 use history_manager::{HistoryManager, SharedHistoryManager};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -67,6 +71,9 @@ fn main() {
 
     // Initialize ContextManager with default settings (128k tokens, 25k reserved)
     let context_manager = ContextManager::default();
+    
+    // Initialize MCPManager for Model Context Protocol extensions
+    let mcp_manager = MCPManager::new();
 
     tauri::Builder::default()
         // .manage(WindowManager::new())
@@ -76,6 +83,7 @@ fn main() {
         .manage(Mutex::new(chroma_manager))
         .manage(code_analysis_service)
         .manage(context_manager)
+        .manage(mcp_manager)
         .setup(|app| {
             // Initialize HistoryManager
             let history_manager = HistoryManager::new(&app.handle())
@@ -137,6 +145,16 @@ fn main() {
             // window_manager::close_window,
             // window_manager::dock_window,
             // window_manager::undock_window,
+            mcp_commands::list_mcp_servers,
+            mcp_commands::add_mcp_server,
+            mcp_commands::remove_mcp_server,
+            mcp_commands::toggle_mcp_server,
+            mcp_commands::test_mcp_connection,
+            mcp_commands::connect_mcp_server,
+            mcp_commands::disconnect_mcp_server,
+            mcp_commands::list_mcp_tools,
+            mcp_commands::call_mcp_tool,
+            mcp_commands::auto_connect_mcp_servers,
             history_manager::list_chat_sessions,
             history_manager::get_chat_session,
             history_manager::create_chat_session,

@@ -29,6 +29,18 @@
 - **Performance Optimized**: Debounced analysis, response caching, background processing
 - **Multi-language Support**: JavaScript, TypeScript, Rust, Python, and more
 
+### **🧠 Advanced AI Features**
+- **Deep Analysis Mode**: Socratic questioning engine for complex problem-solving
+- **Systematic Analysis**: PDCA/OODA loop approach for structured debugging
+- **Learning System**: Auto-saves successful reasoning patterns to RAG for continuous improvement
+- **Smart Triggers**: Automatically detects complex problems and suggests deep analysis
+
+### **🔧 Extensible Architecture**
+- **MCP Integration**: Model Context Protocol support for user-configurable extensions
+- **Popular Tools**: Quick-add gallery for GitHub, Filesystem, Sequential Thinking, Brave Search
+- **Custom Servers**: Support for any MCP-compatible tool or service
+- **Core Services**: Built-in Ollama, SearXNG, ChromaDB, and LSP remain stable
+
 ### **🎨 User Experience**
 - **Professional UI**: Modern dark theme with smooth animations and real-time feedback
 - **Health Monitoring**: Real-time status indicators for all services

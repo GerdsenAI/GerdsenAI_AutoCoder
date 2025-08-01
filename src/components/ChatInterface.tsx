@@ -26,6 +26,27 @@ interface RAGContextEvent {
   collection: string;
 }
 
+interface AnalysisMode {
+  mode: 'standard' | 'socratic' | 'systematic';
+  maxRounds?: number;
+  saveToRAG?: boolean;
+  timeLimit?: number; // seconds
+}
+
+interface DeepAnalysisResult {
+  solution: string;
+  reasoning: QuestionAnswerChain[];
+  confidence: number;
+  savedToRAG: boolean;
+}
+
+interface QuestionAnswerChain {
+  question: string;
+  answer: string;
+  round: number;
+  timestamp: string;
+}
+
 export interface ChatInterfaceProps {
   session: ChatSession;
   model: string;
@@ -54,15 +75,27 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Context Window Management
   const [showContextPanel, setShowContextPanel] = useState(false);
   const contextManager = useContextManager();
+  
+  // Deep Analysis Mode
+  const [analysisMode, setAnalysisMode] = useState<'standard' | 'socratic' | 'systematic'>('standard');
+  const [maxRounds, setMaxRounds] = useState(5);
+  const [saveToRAG, setSaveToRAG] = useState(true);
+  const [showAnalysisSettings, setShowAnalysisSettings] = useState(false);
+  
+  // MCP Tools Integration
+  const [mcpTools, setMcpTools] = useState<Array<{serverId: string, tool: any}>>([]);
+  const [showMcpTools, setShowMcpTools] = useState(false);
+  const [selectedMcpTool, setSelectedMcpTool] = useState<{serverId: string, toolName: string} | null>(null);
 
   // Update messages when session changes
   useEffect(() => {
     setMessages(session.messages || []);
   }, [session]);
 
-  // Load available collections when component mounts
+  // Load available collections and MCP tools when component mounts
   useEffect(() => {
     loadCollections();
+    loadMcpTools();
   }, []);
 
   // Set up RAG context event listener
@@ -97,6 +130,55 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     } catch (error) {
       console.error('Failed to load collections:', error);
       setCollections(['default']);
+    }
+  };
+
+  const loadMcpTools = async () => {
+    try {
+      const tools = await invoke<Array<[string, any]>>('list_mcp_tools');
+      const formattedTools = tools.map(([serverId, tool]) => ({ serverId, tool }));
+      setMcpTools(formattedTools);
+    } catch (error) {
+      console.error('Failed to load MCP tools:', error);
+      setMcpTools([]);
+    }
+  };
+
+  const callMcpTool = async (serverId: string, toolName: string, args: any) => {
+    try {
+      const result = await invoke('call_mcp_tool', {
+        serverId,
+        toolName,
+        arguments: args
+      });
+      
+      // Add the tool result as a system message
+      const toolMessage: ChatMessage = {
+        role: 'assistant',
+        content: `🔧 **MCP Tool Result** (${toolName} from ${serverId})\n\n${JSON.stringify(result, null, 2)}`,
+        timestamp: new Date().toISOString()
+      };
+      
+      const updatedMessages = [...messages, toolMessage];
+      setMessages(updatedMessages);
+      onSendMessage(toolMessage);
+      
+      return result;
+    } catch (error) {
+      console.error('Failed to call MCP tool:', error);
+      
+      // Add error message
+      const errorMessage: ChatMessage = {
+        role: 'assistant',
+        content: `❌ **MCP Tool Error** (${toolName} from ${serverId})\n\nError: ${error}`,
+        timestamp: new Date().toISOString()
+      };
+      
+      const updatedMessages = [...messages, errorMessage];
+      setMessages(updatedMessages);
+      onSendMessage(errorMessage);
+      
+      throw error;
     }
   };
 
@@ -179,7 +261,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         prompt: userMessage.content,
         useRag: ragEnabled,
         sessionId: session.id,
-        collection: selectedCollection
+        collection: selectedCollection,
+        analysisMode: analysisMode,
+        maxRounds: maxRounds,
+        saveToRAG: saveToRAG
       });
 
     } catch (error) {
@@ -413,7 +498,123 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         )}
         
+        {/* MCP Tools Panel */}
+        {showMcpTools && (
+          <div className="mcp-tools-panel">
+            <div className="mcp-panel-header">
+              <h3>MCP Tools</h3>
+              <button 
+                className="close-panel-button"
+                onClick={() => setShowMcpTools(false)}
+                aria-label="Close MCP Tools Panel"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18"/>
+                  <path d="M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            
+            <div className="mcp-panel-content">
+              {mcpTools.length === 0 ? (
+                <div className="no-tools">
+                  <p>No MCP tools available. Configure MCP servers in Settings to add tools.</p>
+                </div>
+              ) : (
+                <div className="tools-list">
+                  {mcpTools.map(({ serverId, tool }, index) => (
+                    <div key={`${serverId}-${tool.name}-${index}`} className="tool-item">
+                      <div className="tool-info">
+                        <h4>{tool.name}</h4>
+                        <p className="tool-server">from {serverId}</p>
+                        {tool.description && (
+                          <p className="tool-description">{tool.description}</p>
+                        )}
+                      </div>
+                      <button
+                        className="use-tool-button"
+                        onClick={() => {
+                          // For now, call tool with empty args
+                          // In a full implementation, you'd show a form for tool arguments
+                          callMcpTool(serverId, tool.name, {});
+                        }}
+                        disabled={isLoading}
+                      >
+                        Use Tool
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
         <div className="input-controls">
+          {/* Analysis Mode Selector */}
+          <div className="analysis-mode-container">
+            <button
+              className={`control-button ${analysisMode !== 'standard' ? 'active' : ''}`}
+              title="Deep Analysis Mode"
+              aria-label="Deep Analysis Mode"
+              disabled={isLoading}
+              onClick={() => setShowAnalysisSettings(!showAnalysisSettings)}
+            >
+              <svg className="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v6m0 6v6"/>
+                <path d="m9 9 3-3 3 3"/>
+                <path d="m9 15 3 3 3-3"/>
+              </svg>
+              {analysisMode !== 'standard' && <span className="badge">{analysisMode.toUpperCase()}</span>}
+            </button>
+            
+            {showAnalysisSettings && (
+              <div className="analysis-settings-panel">
+                <div className="analysis-mode-selector">
+                  <label>Analysis Mode:</label>
+                  <select
+                    value={analysisMode}
+                    onChange={(e) => setAnalysisMode(e.target.value as 'standard' | 'socratic' | 'systematic')}
+                    disabled={isLoading}
+                  >
+                    <option value="standard">Standard - Direct Answer</option>
+                    <option value="socratic">Socratic - Guided Questions</option>
+                    <option value="systematic">Systematic - PDCA/OODA Loop</option>
+                  </select>
+                </div>
+                
+                {analysisMode !== 'standard' && (
+                  <>
+                    <div className="analysis-rounds">
+                      <label>Max Question Rounds:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={maxRounds}
+                        onChange={(e) => setMaxRounds(parseInt(e.target.value) || 5)}
+                        disabled={isLoading}
+                      />
+                    </div>
+                    
+                    <div className="analysis-rag">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={saveToRAG}
+                          onChange={(e) => setSaveToRAG(e.target.checked)}
+                          disabled={isLoading}
+                        />
+                        Save reasoning patterns to RAG
+                      </label>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          
           <button
             className={`control-button ${ragEnabled ? 'active' : ''}`}
             title="Toggle RAG"
@@ -462,6 +663,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <span className="badge">{contextManager.files.filter(f => f.is_pinned).length}</span>
             )}
             {showContextPanel && <span className="badge">CONTEXT</span>}
+          </button>
+          <button
+            className={`control-button ${showMcpTools ? 'active' : ''}`}
+            title="MCP Tools"
+            aria-label="MCP Tools"
+            disabled={isLoading}
+            onClick={() => setShowMcpTools(!showMcpTools)}
+          >
+            <svg className="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 22a10 10 0 110-20 10 10 0 010 20z"/>
+              <path d="M8 12l2 2 4-4"/>
+              <path d="M21 12c0-1-2-3-2-3s-2 2-2 3 2 3 2 3 2-2 2-3"/>
+              <path d="M3 12c0 1 2 3 2 3s2-2 2-3-2-3-2-3-2 2-2 3"/>
+            </svg>
+            {mcpTools.length > 0 && <span className="badge">{mcpTools.length}</span>}
+            {showMcpTools && <span className="badge">TOOLS</span>}
           </button>
           <button
             className="control-button"

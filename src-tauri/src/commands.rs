@@ -1,9 +1,11 @@
 use crate::ollama_client::{OllamaClient, ChatMessage, GenerateOptions};
 use crate::chroma_manager::ChromaManager;
 use crate::operation_manager::{Operation, OperationStatus};
+use crate::analysis_engine::{AnalysisEngine, AnalysisMode, AnalysisConfig, should_suggest_deep_analysis};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State, Emitter};
 use tokio::sync::Mutex;
+use tokio::time::Duration;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ModelInfo {
@@ -252,6 +254,9 @@ pub async fn generate_stream_with_ollama(
     context: Option<Vec<String>>,
     temperature: Option<f32>,
     collection: Option<String>,
+    analysis_mode: Option<String>,
+    max_rounds: Option<usize>,
+    save_to_rag: Option<bool>,
     app_handle: AppHandle,
     ollama_client: State<'_, OllamaClient>,
     chroma_manager: State<'_, Mutex<ChromaManager>>,
@@ -259,14 +264,23 @@ pub async fn generate_stream_with_ollama(
     let client = ollama_client.inner();
     let use_rag = use_rag.unwrap_or(false);
     
-    let options = GenerateOptions {
-        temperature,
-        max_tokens: None,
-        top_p: None,
-        top_k: None,
+    // Parse analysis mode
+    let analysis_mode = match analysis_mode.as_deref() {
+        Some("socratic") => AnalysisMode::Socratic,
+        Some("systematic") => AnalysisMode::Systematic,
+        _ => AnalysisMode::Standard,
     };
     
-    let app_handle_clone = app_handle.clone();
+    // Check if deep analysis is suggested for this prompt
+    let suggest_deep_analysis = should_suggest_deep_analysis(&prompt);
+    if suggest_deep_analysis && matches!(analysis_mode, AnalysisMode::Standard) {
+        // Emit suggestion to frontend
+        let _ = app_handle.emit("deep-analysis-suggestion", serde_json::json!({
+            "session_id": session_id.as_ref().unwrap_or(&String::new()),
+            "suggested": true,
+            "reason": "Complex problem detected - consider using Socratic or Systematic analysis mode"
+        }));
+    }
     
     // Build enhanced prompt with RAG context if enabled
     let enhanced_prompt = if use_rag {
@@ -314,10 +328,110 @@ pub async fn generate_stream_with_ollama(
         prompt.clone()
     };
     
+    // Use Deep Analysis if mode is not Standard
+    if !matches!(analysis_mode, AnalysisMode::Standard) {
+        // Create analysis engine
+        let chroma_manager_clone = {
+            let manager = chroma_manager.lock().await;
+            // We can't clone ChromaManager, so we'll pass None for now
+            // In a real implementation, we'd need to handle this differently
+            None
+        };
+        
+        let analysis_engine = AnalysisEngine::new(client.clone(), chroma_manager_clone);
+        
+        let analysis_config = AnalysisConfig {
+            mode: analysis_mode.clone(),
+            max_rounds: max_rounds.unwrap_or(5),
+            time_limit: Duration::from_secs(300),
+            save_to_rag: save_to_rag.unwrap_or(true),
+        };
+        
+        // Emit analysis start event
+        let _ = app_handle.emit("deep-analysis-start", serde_json::json!({
+            "session_id": session_id.as_ref().unwrap_or(&String::new()),
+            "mode": format!("{:?}", analysis_mode),
+            "max_rounds": analysis_config.max_rounds
+        }));
+        
+        match analysis_engine.analyze(&enhanced_prompt, &model, analysis_config).await {
+            Ok(result) => {
+                // Emit reasoning chain for UI display
+                let _ = app_handle.emit("deep-analysis-reasoning", serde_json::json!({
+                    "session_id": session_id.as_ref().unwrap_or(&String::new()),
+                    "reasoning": result.reasoning,
+                    "confidence": result.confidence
+                }));
+                
+                // Stream the final solution
+                let app_handle_clone = app_handle.clone();
+                let solution_chars: Vec<char> = result.solution.chars().collect();
+                
+                // Stream solution character by character for smooth UX
+                for (i, char) in solution_chars.iter().enumerate() {
+                    let _ = app_handle_clone.emit("ollama-stream", serde_json::json!({
+                        "token": char.to_string(),
+                        "done": false
+                    }));
+                    
+                    // Small delay to simulate streaming
+                    if i % 10 == 0 {
+                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+                    }
+                }
+                
+                // Emit completion event
+                let _ = app_handle.emit("ollama-stream", serde_json::json!({
+                    "token": "",
+                    "done": true
+                }));
+                
+                // Emit final analysis result
+                let _ = app_handle.emit("deep-analysis-complete", serde_json::json!({
+                    "session_id": session_id.as_ref().unwrap_or(&String::new()),
+                    "result": result
+                }));
+                
+                Ok(())
+            }
+            Err(e) => {
+                // Emit error and fall back to standard generation
+                let _ = app_handle.emit("deep-analysis-error", serde_json::json!({
+                    "session_id": session_id.as_ref().unwrap_or(&String::new()),
+                    "error": e.clone()
+                }));
+                
+                // Fall back to standard streaming
+                standard_streaming_generation(client, &model, &enhanced_prompt, temperature, app_handle).await
+            }
+        }
+    } else {
+        // Standard streaming generation
+        standard_streaming_generation(client, &model, &enhanced_prompt, temperature, app_handle).await
+    }
+}
+
+/// Helper function for standard streaming generation
+async fn standard_streaming_generation(
+    client: &OllamaClient,
+    model: &str,
+    prompt: &str,
+    temperature: Option<f32>,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    let options = GenerateOptions {
+        temperature,
+        max_tokens: None,
+        top_p: None,
+        top_k: None,
+    };
+    
+    let app_handle_clone = app_handle.clone();
+    
     client
         .generate_stream(
-            &model,
-            &enhanced_prompt,
+            model,
+            prompt,
             Some(options),
             move |token: &str| {
                 let _ = app_handle_clone.emit("ollama-stream", serde_json::json!({

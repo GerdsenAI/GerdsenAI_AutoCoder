@@ -6,6 +6,7 @@ import ModelSelector from './components/ModelSelector';
 import RAGPanel from './components/RAGPanel';
 import SearchPanel from './components/SearchPanel';
 import HistoryPanel from './components/HistoryPanel';
+import SettingsPanel from './components/SettingsPanel';
 import DependencyGraph from './components/DependencyGraph';
 import ImpactAnalysisPanel from './components/ImpactAnalysisPanel';
 import CodeRefactoringPanel from './components/CodeRefactoringPanel';
@@ -14,7 +15,7 @@ import { OperationMonitor } from './components/OperationMonitor';
 import { OperationTestButton } from './components/OperationTestButton';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'search' | 'rag' | 'history' | 'code'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'search' | 'rag' | 'history' | 'code' | 'settings'>('chat');
   const [codeAnalysisTab, setCodeAnalysisTab] = useState<'dependency' | 'impact' | 'refactor'>('dependency');
   const [selectedModel, setSelectedModel] = useState<string>('llama3');
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -177,6 +178,12 @@ function App() {
         >
           Code Analysis
         </div>
+        <div 
+          className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          Settings
+        </div>
       </div>
       
       <div className="content-area">
@@ -251,6 +258,10 @@ function App() {
               )}
             </div>
           </div>
+        )}
+        
+        {activeTab === 'settings' && (
+          <SettingsPanel />
         )}
       </div>
       
