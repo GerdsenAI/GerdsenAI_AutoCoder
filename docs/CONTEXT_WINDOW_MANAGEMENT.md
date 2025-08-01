@@ -151,6 +151,39 @@ const PRESETS = {
    - Highlight additions/removals
    - Provide undo functionality
 
+### Deep Analysis Mode Integration
+
+When Deep Analysis Mode is activated, context management adapts:
+
+```typescript
+interface DeepAnalysisContext extends ContextPreferences {
+  analysisMode: 'standard' | 'socratic' | 'systematic';
+  includeDebugHistory: boolean;
+  prioritizeErrorContext: boolean;
+  maxAnalysisRounds: number;
+}
+
+// Context allocation in deep analysis mode
+const DEEP_ANALYSIS_ALLOCATION = {
+  conversation: 25,      // More space for Q&A chains
+  ragDocuments: 35,      // Include past problem-solving patterns
+  currentProblem: 20,    // Error logs, stack traces
+  workingFiles: 15,      // Actively debugged files
+  reserved: 5            // Smaller reserve for longer conversations
+};
+```
+
+**Key Differences in Deep Analysis Mode:**
+1. **Expanded Conversation Context** - Maintains full Q&A chains
+2. **RAG Priority** - Searches for similar debugging patterns
+3. **Error Context** - Automatically includes logs and traces
+4. **Dynamic Reallocation** - Adjusts as investigation progresses
+
+**Context Strategies by Mode:**
+- **Standard Mode**: Balanced allocation, quick responses
+- **Socratic Mode**: Conversation-heavy, maintains question history
+- **Systematic Mode**: Template-driven, includes methodology docs
+
 ## Phase 4: Performance & Scale (Week 4+)
 
 ### Optimization Strategies

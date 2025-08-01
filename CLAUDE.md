@@ -94,7 +94,12 @@ The application follows a modular architecture with clear separation of concerns
 #### Sprint 2 In Progress 🚀
 1. **RAG-to-Chat Integration**: ✅ COMPLETED - Backend integration with ChromaDB, professional UI with SVG icons
 2. **Future-Proof Context Window Management**: 🎯 NEXT PRIORITY - Dynamic token-aware loading, hierarchical context system, smart chunking, model-specific adapters
-3. **Repository-Wide Coding**: Advanced code analysis, automated generation, multi-file dependencies
+3. **Deep Analysis Mode**: Optional Socratic/systematic problem-solving for complex debugging
+   - Toggle between standard/socratic/systematic approaches
+   - Auto-saves successful debugging patterns to RAG
+   - Smart activation on complex problems
+   - Time-boxed questioning rounds
+4. **Repository-Wide Coding**: Advanced code analysis, automated generation, multi-file dependencies
 4. **IDE Integration**: Real VS Code and Visual Studio extension implementations
 
 ### Data Flow

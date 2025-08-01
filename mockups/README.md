@@ -26,3 +26,23 @@ An interactive prototype demonstrating the improved context window management in
 - Focus on clarity and user control over AI decisions
 
 This mockup represents the pragmatic approach to context window management, prioritizing user understanding and control over technical complexity.
+
+## Deep Analysis Mode Toggle
+
+**File**: `deep-analysis-toggle.html`
+
+An interactive prototype demonstrating the Deep Analysis Mode interface for complex problem-solving.
+
+### Features Demonstrated:
+- **Mode Toggle**: On/off switch with visual feedback
+- **Analysis Modes**: Socratic and Systematic options
+- **Progress Tracking**: Round indicators and time elapsed
+- **Chat Integration**: Example of Socratic questioning in action
+
+### Key Interactions:
+- Toggle activates mode selection
+- Mode selection triggers progress indicator
+- Exit button with confirmation dialog
+- Visual distinction for deep analysis conversations
+
+This mockup shows how complex debugging features can be optional power tools rather than constant overhead.
