@@ -4,6 +4,11 @@
 pub mod searxng_client;
 pub mod searxng_commands;
 pub mod operation_manager;
+pub mod commands;
+pub mod user_errors;
+pub mod ollama_client;
+pub mod chroma_manager;
+pub mod analysis_engine;
 
 #[cfg(test)]
 mod tests;

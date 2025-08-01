@@ -353,10 +353,14 @@ impl SearXNGClient {
         let url = format!("{}/healthz", base_url);
         let timeout_duration = Duration::from_secs(self.health_monitor.config.timeout_seconds);
         
-        let response = tokio::time::timeout(
+        let response = match tokio::time::timeout(
             timeout_duration,
             self.client.get(&url).send()
-        ).await??;
+        ).await {
+            Ok(Ok(resp)) => resp,
+            Ok(Err(e)) => return Err(Box::new(e)),
+            Err(_) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::TimedOut, "Request timed out")))
+        };
         
         Ok(response.status().is_success())
     }
@@ -408,7 +412,7 @@ impl SearXNGClient {
     pub async fn search_with_fallback(&self, query: &str, engines: Option<Vec<String>>) -> Result<SearchResult, Box<dyn Error + Send>> {
         // Check if service is available
         if !self.is_available().await {
-            return Err("SearXNG service is currently unavailable".into());
+            return Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotConnected, "SearXNG service is currently unavailable")));
         }
 
         // If service is degraded, provide degraded response
@@ -431,11 +435,11 @@ impl SearXNGClient {
         }
 
         // Service is healthy, perform normal search
-        let results = self.search(query, engines).await?;
+        let results = self.search(query, engines, None, None).await?;
         if let Some(first_result) = results.first() {
             Ok(first_result.clone())
         } else {
-            Err("No search results found".into())
+            Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "No search results found")))
         }
     }
 }

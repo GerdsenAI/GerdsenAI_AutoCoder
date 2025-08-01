@@ -50,6 +50,7 @@ pub struct ResourceRequirements {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq)]
 pub enum OperationStatus {
     Queued,
     Running { progress: Option<f32> },
@@ -154,7 +155,7 @@ impl OperationManager {
     }
 
     pub fn new_with_cleanup(resource_limits: ResourceLimits, cleanup_config: CleanupConfig) -> Self {
-        let (queue_tx, mut queue_rx) = mpsc::channel(100);
+        let (queue_tx, mut queue_rx) = mpsc::channel::<Operation>(100);
         let operations = DashMap::new();
         let operations_clone = operations.clone();
         let semaphore = Arc::new(Semaphore::new(resource_limits.max_concurrent_operations));
@@ -231,6 +232,7 @@ impl OperationManager {
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
         });
+
         // Mock async operation handlers for demonstration
         async fn mock_ai_completion(_op: &Operation) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
             tokio::time::sleep(Duration::from_millis(300)).await;
@@ -256,7 +258,6 @@ impl OperationManager {
             tokio::time::sleep(Duration::from_millis(150)).await;
             Ok(serde_json::json!({"result": "Model loaded"}))
         }
-        });
 
         // Spawn cleanup task
         let operations_cleanup = operations.clone();

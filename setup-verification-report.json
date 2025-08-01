@@ -1,0 +1,61 @@
+{
+  "ready": false,
+  "criticalIssues": 1,
+  "warnings": 1,
+  "results": {
+    "platform": {
+      "status": "good",
+      "details": {
+        "platform": "macOS",
+        "version": "15.5",
+        "architecture": "arm64",
+        "cpu": "Apple M3 Ultra",
+        "isAppleSilicon": true
+      }
+    },
+    "nodejs": {
+      "status": "good",
+      "details": {
+        "version": "v24.3.0",
+        "compatible": true
+      }
+    },
+    "rust": {
+      "status": "good",
+      "details": {
+        "version": "rustc 1.88.0 (6b00bc388 2025-06-23)"
+      }
+    },
+    "dependencies": {
+      "status": "good",
+      "details": {
+        "installed": true
+      }
+    },
+    "services": {
+      "ollama": {
+        "status": "good",
+        "details": {
+          "running": true,
+          "port": 11434
+        }
+      },
+      "searxng": {
+        "status": "warning",
+        "details": {
+          "running": false,
+          "port": 8080,
+          "optional": true
+        }
+      },
+      "chromadb": {
+        "status": "error",
+        "details": {
+          "running": false,
+          "port": 8000,
+          "error": "fetch failed"
+        }
+      }
+    }
+  }
+}

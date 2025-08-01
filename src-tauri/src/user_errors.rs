@@ -146,7 +146,7 @@ impl ToUserError for Box<dyn std::error::Error + Send> {
             return UserError {
                 title: "Memory Error".to_string(),
                 message: "The system has run out of available memory.".to_string(),
-                suggestion: Some("Please close other applications or try working with smaller files.".to_string(),
+                suggestion: Some("Please close other applications or try working with smaller files.".to_string()),
                 help_link: None,
                 error_code: "OUT_OF_MEMORY".to_string(),
                 technical_details: Some(self.to_string()),
