@@ -10,6 +10,7 @@ mod analysis_engine;
 mod mcp_manager;
 mod mcp_commands;
 mod thread_pool_manager;
+mod user_errors;
 // mod doc_scraper;
 // mod window_manager;
 mod history_manager;

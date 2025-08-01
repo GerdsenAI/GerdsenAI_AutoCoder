@@ -2,6 +2,7 @@ use crate::ollama_client::{OllamaClient, ChatMessage, GenerateOptions, HealthSta
 use crate::chroma_manager::ChromaManager;
 use crate::operation_manager::{Operation, OperationStatus};
 use crate::analysis_engine::{AnalysisEngine, AnalysisMode, AnalysisConfig, should_suggest_deep_analysis};
+use crate::user_errors::{ToUserError, common};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State, Emitter};
 use tokio::sync::Mutex;
@@ -22,10 +23,14 @@ pub async fn check_ollama_connection(
 ) -> Result<bool, String> {
     let client = ollama_client.inner();
     
-    client
-        .check_connection()
-        .await
-        .map_err(|e| e.to_string())
+    match client.check_connection().await {
+        Ok(result) => Ok(result),
+        Err(e) => {
+            // Convert to user-friendly error
+            let user_error = e.to_user_error();
+            Err(serde_json::to_string(&user_error).unwrap_or_else(|_| user_error.message))
+        }
+    }
 }
 
 #[tauri::command]
@@ -34,10 +39,13 @@ pub async fn list_models(
 ) -> Result<Vec<ModelInfo>, String> {
     let client = ollama_client.inner();
     
-    let models = client
-        .list_models()
-        .await
-        .map_err(|e| e.to_string())?;
+    let models = match client.list_models().await {
+        Ok(models) => models,
+        Err(e) => {
+            let user_error = e.to_user_error();
+            return Err(serde_json::to_string(&user_error).unwrap_or_else(|_| user_error.message));
+        }
+    };
         
     let model_infos = models
         .into_iter()
@@ -72,10 +80,13 @@ pub async fn generate_completion(
         top_k: None,
     };
     
-    client
-        .generate_completion(&model, &prompt, Some(options))
-        .await
-        .map_err(|e| e.to_string())
+    match client.generate_completion(&model, &prompt, Some(options)).await {
+        Ok(result) => Ok(result),
+        Err(e) => {
+            let user_error = e.to_user_error();
+            Err(serde_json::to_string(&user_error).unwrap_or_else(|_| user_error.message))
+        }
+    }
 }
 
 #[tauri::command]

@@ -1,4 +1,5 @@
 use crate::searxng_client::{SearXNGClient, SearchResult, SearXNGHealthStats};
+use crate::user_errors::{ToUserError, common};
 use tauri::State;
 
 #[tauri::command]
@@ -12,10 +13,13 @@ pub async fn check_searxng_connection(
         client.set_base_url(url).await;
     }
     
-    client
-        .check_connection()
-        .await
-        .map_err(|e| e.to_string())
+    match client.check_connection().await {
+        Ok(result) => Ok(result),
+        Err(e) => {
+            let user_error = common::service_temporarily_unavailable("SearXNG");
+            Err(serde_json::to_string(&user_error).unwrap_or_else(|_| user_error.message))
+        }
+    }
 }
 
 #[tauri::command]
@@ -46,10 +50,13 @@ pub async fn search_web(
 ) -> Result<Vec<SearchResult>, String> {
     let client = searxng_client.inner();
     
-    client
-        .search(&query, engines, categories, limit)
-        .await
-        .map_err(|e| e.to_string())
+    match client.search(&query, engines, categories, limit).await {
+        Ok(results) => Ok(results),
+        Err(e) => {
+            let user_error = e.to_user_error();
+            Err(serde_json::to_string(&user_error).unwrap_or_else(|_| user_error.message))
+        }
+    }
 }
 
 #[tauri::command]
@@ -142,8 +149,11 @@ pub async fn search_web_with_fallback(
 ) -> Result<SearchResult, String> {
     let client = searxng_client.inner();
     
-    client
-        .search_with_fallback(&query, engines)
-        .await
-        .map_err(|e| e.to_string())
+    match client.search_with_fallback(&query, engines).await {
+        Ok(result) => Ok(result),
+        Err(e) => {
+            let user_error = e.to_user_error();
+            Err(serde_json::to_string(&user_error).unwrap_or_else(|_| user_error.message))
+        }
+    }
 }
