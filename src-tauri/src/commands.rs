@@ -1,4 +1,4 @@
-use crate::ollama_client::{OllamaClient, ChatMessage, GenerateOptions};
+use crate::ollama_client::{OllamaClient, ChatMessage, GenerateOptions, HealthStats, HealthConfig};
 use crate::chroma_manager::ChromaManager;
 use crate::operation_manager::{Operation, OperationStatus};
 use crate::analysis_engine::{AnalysisEngine, AnalysisMode, AnalysisConfig, should_suggest_deep_analysis};
@@ -473,4 +473,56 @@ pub fn cancel_operation(
     op_manager: State<'_, crate::operation_manager::OperationManager>,
 ) -> Result<(), String> {
     op_manager.cancel_operation(&operation_id)
+}
+
+// Health monitoring commands
+
+#[tauri::command]
+pub async fn get_ollama_health_stats(
+    ollama_client: State<'_, OllamaClient>,
+) -> Result<HealthStats, String> {
+    let client = ollama_client.inner();
+    Ok(client.get_health_stats().await)
+}
+
+#[tauri::command]
+pub async fn check_ollama_health(
+    ollama_client: State<'_, OllamaClient>,
+) -> Result<bool, String> {
+    let client = ollama_client.inner();
+    client.is_healthy().await.then_some(true).ok_or_else(|| "Ollama service is unhealthy".to_string())
+}
+
+#[tauri::command]
+pub async fn start_ollama_health_monitoring(
+    ollama_client: State<'_, OllamaClient>,
+) -> Result<(), String> {
+    let client = ollama_client.inner();
+    client.start_health_monitoring().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn stop_ollama_health_monitoring(
+    ollama_client: State<'_, OllamaClient>,
+) -> Result<(), String> {
+    let client = ollama_client.inner();
+    client.stop_health_monitoring();
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn check_ollama_connection_detailed(
+    ollama_client: State<'_, OllamaClient>,
+) -> Result<serde_json::Value, String> {
+    let client = ollama_client.inner();
+    
+    let is_connected = client.check_connection_with_retry().await.map_err(|e| e.to_string())?;
+    let health_stats = client.get_health_stats().await;
+    
+    Ok(serde_json::json!({
+        "connected": is_connected,
+        "health_stats": health_stats,
+        "service_url": client.get_base_url()
+    }))
 }

@@ -1,4 +1,4 @@
-use crate::searxng_client::{SearXNGClient, SearchResult};
+use crate::searxng_client::{SearXNGClient, SearchResult, SearXNGHealthStats};
 use tauri::State;
 
 #[tauri::command]
@@ -68,4 +68,82 @@ pub async fn get_available_categories(
         "files".to_string(),
         "social media".to_string(),
     ])
+}
+
+// SearXNG Health monitoring commands
+
+#[tauri::command]
+pub async fn get_searxng_health_stats(
+    searxng_client: State<'_, SearXNGClient>,
+) -> Result<SearXNGHealthStats, String> {
+    let client = searxng_client.inner();
+    Ok(client.get_health_stats().await)
+}
+
+#[tauri::command]
+pub async fn check_searxng_health(
+    searxng_client: State<'_, SearXNGClient>,
+) -> Result<bool, String> {
+    let client = searxng_client.inner();
+    Ok(client.is_available().await)
+}
+
+#[tauri::command]
+pub async fn check_searxng_degraded(
+    searxng_client: State<'_, SearXNGClient>,
+) -> Result<bool, String> {
+    let client = searxng_client.inner();
+    Ok(client.is_degraded().await)
+}
+
+#[tauri::command]
+pub async fn start_searxng_health_monitoring(
+    searxng_client: State<'_, SearXNGClient>,
+) -> Result<(), String> {
+    let client = searxng_client.inner();
+    client.start_health_monitoring().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn stop_searxng_health_monitoring(
+    searxng_client: State<'_, SearXNGClient>,
+) -> Result<(), String> {
+    let client = searxng_client.inner();
+    client.stop_health_monitoring();
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn check_searxng_connection_detailed(
+    searxng_client: State<'_, SearXNGClient>,
+) -> Result<serde_json::Value, String> {
+    let client = searxng_client.inner();
+    
+    let is_connected = client.check_connection_with_retry().await.map_err(|e| e.to_string())?;
+    let health_stats = client.get_health_stats().await;
+    let is_available = client.is_available().await;
+    let is_degraded = client.is_degraded().await;
+    
+    Ok(serde_json::json!({
+        "connected": is_connected,
+        "available": is_available,
+        "degraded": is_degraded,
+        "health_stats": health_stats,
+        "graceful_degradation": true
+    }))
+}
+
+#[tauri::command]
+pub async fn search_web_with_fallback(
+    query: String,
+    engines: Option<Vec<String>>,
+    searxng_client: State<'_, SearXNGClient>,
+) -> Result<SearchResult, String> {
+    let client = searxng_client.inner();
+    
+    client
+        .search_with_fallback(&query, engines)
+        .await
+        .map_err(|e| e.to_string())
 }

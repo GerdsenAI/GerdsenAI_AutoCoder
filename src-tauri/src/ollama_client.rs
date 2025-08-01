@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::error::Error;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 use futures_util::StreamExt;
 use bytes::Bytes;
@@ -95,6 +97,114 @@ pub struct EmbeddingResponse {
 
 // Type alias for shared Ollama client
 pub type SharedOllamaClient = Arc<Mutex<OllamaClient>>;
+
+/// Health monitoring configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HealthConfig {
+    pub check_interval_seconds: u64,
+    pub timeout_seconds: u64,
+    pub max_retry_attempts: u32,
+    pub retry_backoff_seconds: u64,
+    pub auto_reconnect: bool,
+}
+
+impl Default for HealthConfig {
+    fn default() -> Self {
+        Self {
+            check_interval_seconds: 30, // Check every 30 seconds
+            timeout_seconds: 10,        // 10 second timeout
+            max_retry_attempts: 3,      // Try 3 times
+            retry_backoff_seconds: 2,   // 2 second backoff
+            auto_reconnect: true,       // Enable auto-reconnect
+        }
+    }
+}
+
+/// Health monitoring statistics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HealthStats {
+    pub is_healthy: bool,
+    pub last_check_time: Option<u64>, // Unix timestamp
+    pub last_successful_check: Option<u64>,
+    pub consecutive_failures: u32,
+    pub total_checks: u64,
+    pub total_failures: u64,
+    pub average_response_time_ms: f64,
+}
+
+impl Default for HealthStats {
+    fn default() -> Self {
+        Self {
+            is_healthy: false,
+            last_check_time: None,
+            last_successful_check: None,
+            consecutive_failures: 0,
+            total_checks: 0,
+            total_failures: 0,
+            average_response_time_ms: 0.0,
+        }
+    }
+}
+
+/// Health monitoring state
+pub struct HealthMonitor {
+    config: HealthConfig,
+    stats: Arc<Mutex<HealthStats>>,
+    is_monitoring: Arc<AtomicBool>,
+    check_count: Arc<AtomicU64>,
+    failure_count: Arc<AtomicU64>,
+}
+
+impl HealthMonitor {
+    pub fn new(config: HealthConfig) -> Self {
+        Self {
+            config,
+            stats: Arc::new(Mutex::new(HealthStats::default())),
+            is_monitoring: Arc::new(AtomicBool::new(false)),
+            check_count: Arc::new(AtomicU64::new(0)),
+            failure_count: Arc::new(AtomicU64::new(0)),
+        }
+    }
+
+    /// Get current health statistics
+    pub async fn get_stats(&self) -> HealthStats {
+        self.stats.lock().await.clone()
+    }
+
+    /// Record a health check result
+    pub async fn record_check(&self, success: bool, response_time: Duration) {
+        let mut stats = self.stats.lock().await;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        stats.last_check_time = Some(now);
+        stats.total_checks += 1;
+
+        if success {
+            stats.is_healthy = true;
+            stats.last_successful_check = Some(now);
+            stats.consecutive_failures = 0;
+        } else {
+            stats.is_healthy = false;
+            stats.consecutive_failures += 1;
+            stats.total_failures += 1;
+        }
+
+        // Update running average response time
+        let total_checks = stats.total_checks as f64;
+        let new_time = response_time.as_millis() as f64;
+        stats.average_response_time_ms = 
+            ((stats.average_response_time_ms * (total_checks - 1.0)) + new_time) / total_checks;
+    }
+
+    /// Check if service should be considered healthy
+    pub async fn is_healthy(&self) -> bool {
+        let stats = self.stats.lock().await;
+        stats.is_healthy && stats.consecutive_failures < self.config.max_retry_attempts
+    }
+}
 
 /// Efficient streaming buffer for handling Ollama responses
 #[derive(Debug)]
@@ -220,14 +330,23 @@ pub struct OllamaClient {
     base_url: String,
     client: Client,
     models_cache: Arc<Mutex<HashMap<String, ModelInfo>>>,
+    health_monitor: Arc<HealthMonitor>,
 }
 
 impl OllamaClient {
     pub fn new(base_url: Option<String>) -> Self {
+        Self::new_with_health_config(base_url, HealthConfig::default())
+    }
+
+    pub fn new_with_health_config(base_url: Option<String>, health_config: HealthConfig) -> Self {
+        let base_url = base_url.unwrap_or_else(|| "http://localhost:11434".to_string());
+        let health_monitor = Arc::new(HealthMonitor::new(health_config));
+        
         Self {
-            base_url: base_url.unwrap_or_else(|| "http://localhost:11434".to_string()),
+            base_url,
             client: Client::new(),
             models_cache: Arc::new(Mutex::new(HashMap::new())),
+            health_monitor,
         }
     }
 
@@ -537,13 +656,141 @@ impl OllamaClient {
         Ok(embedding_response.embedding)
     }
 
+    /// Enhanced connection check with health monitoring
     pub async fn check_connection(&self) -> Result<bool, Box<dyn Error>> {
-        let url = format!("{}/api/version", self.base_url);
+        self.check_connection_with_retry().await
+    }
+
+    /// Check connection with automatic retry and health monitoring
+    pub async fn check_connection_with_retry(&self) -> Result<bool, Box<dyn Error>> {
+        let start_time = Instant::now();
+        let mut last_error = None;
         
-        match self.client.get(&url).send().await {
-            Ok(response) => Ok(response.status().is_success()),
-            Err(_) => Ok(false),
+        for attempt in 1..=self.health_monitor.config.max_retry_attempts {
+            match self.perform_health_check().await {
+                Ok(is_healthy) => {
+                    let response_time = start_time.elapsed();
+                    self.health_monitor.record_check(is_healthy, response_time).await;
+                    return Ok(is_healthy);
+                }
+                Err(e) => {
+                    last_error = Some(e);
+                    
+                    // If this wasn't the last attempt, wait before retrying
+                    if attempt < self.health_monitor.config.max_retry_attempts {
+                        let backoff_duration = Duration::from_secs(
+                            self.health_monitor.config.retry_backoff_seconds * attempt as u64
+                        );
+                        tokio::time::sleep(backoff_duration).await;
+                    }
+                }
+            }
         }
+        
+        // All attempts failed
+        let response_time = start_time.elapsed();
+        self.health_monitor.record_check(false, response_time).await;
+        
+        if let Some(error) = last_error {
+            Err(error)
+        } else {
+            Err("Connection check failed after all retry attempts".into())
+        }
+    }
+
+    /// Perform actual health check against Ollama API
+    async fn perform_health_check(&self) -> Result<bool, Box<dyn Error>> {
+        let url = format!("{}/api/version", self.base_url);
+        let timeout_duration = Duration::from_secs(self.health_monitor.config.timeout_seconds);
+        
+        let response = tokio::time::timeout(
+            timeout_duration,
+            self.client.get(&url).send()
+        ).await??;
+        
+        Ok(response.status().is_success())
+    }
+
+    /// Get health monitoring statistics
+    pub async fn get_health_stats(&self) -> HealthStats {
+        self.health_monitor.get_stats().await
+    }
+
+    /// Check if the service is currently considered healthy
+    pub async fn is_healthy(&self) -> bool {
+        self.health_monitor.is_healthy().await
+    }
+
+    /// Start background health monitoring
+    pub async fn start_health_monitoring(&self) {
+        if self.health_monitor.is_monitoring.swap(true, Ordering::SeqCst) {
+            return; // Already monitoring
+        }
+
+        let client = self.clone();
+        let health_monitor = self.health_monitor.clone();
+        
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(
+                Duration::from_secs(health_monitor.config.check_interval_seconds)
+            );
+            
+            while health_monitor.is_monitoring.load(Ordering::SeqCst) {
+                interval.tick().await;
+                
+                // Perform health check
+                let _ = client.check_connection_with_retry().await;
+            }
+        });
+    }
+
+    /// Stop background health monitoring
+    pub fn stop_health_monitoring(&self) {
+        self.health_monitor.is_monitoring.store(false, Ordering::SeqCst);
+    }
+
+    /// Execute operation with automatic retry and circuit breaker logic
+    pub async fn with_retry<F, T, E>(&self, operation: F) -> Result<T, Box<dyn Error>>
+    where
+        F: Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, E>> + Send>> + Send + Sync,
+        E: Into<Box<dyn Error>> + Send + Sync,
+        T: Send,
+    {
+        // Check if service is healthy before attempting operation
+        if !self.is_healthy().await {
+            // Try to reconnect first
+            if self.health_monitor.config.auto_reconnect {
+                if let Ok(false) = self.check_connection_with_retry().await {
+                    return Err("Service is unavailable and reconnection failed".into());
+                }
+            } else {
+                return Err("Service is currently unavailable".into());
+            }
+        }
+
+        let mut last_error = None;
+        
+        for attempt in 1..=self.health_monitor.config.max_retry_attempts {
+            match operation().await {
+                Ok(result) => return Ok(result),
+                Err(e) => {
+                    last_error = Some(e.into());
+                    
+                    // If this wasn't the last attempt, wait before retrying
+                    if attempt < self.health_monitor.config.max_retry_attempts {
+                        let backoff_duration = Duration::from_secs(
+                            self.health_monitor.config.retry_backoff_seconds * attempt as u64
+                        );
+                        tokio::time::sleep(backoff_duration).await;
+                    }
+                }
+            }
+        }
+        
+        // Mark as unhealthy if operation keeps failing
+        self.health_monitor.record_check(false, Duration::from_millis(0)).await;
+        
+        Err(last_error.unwrap_or_else(|| "Operation failed after all retry attempts".into()))
     }
 }
 

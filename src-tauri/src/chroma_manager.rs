@@ -2,11 +2,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering}; 
 use dashmap::DashMap;
 use std::sync::Arc;
 use crate::ollama_client::OllamaClient;
 use crate::thread_pool_manager::{ThreadPoolManager, TaskType, TaskPriority};
-use tokio::sync::Semaphore;
+use tokio::sync::{Semaphore, Mutex as TokioMutex};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DocumentMetadata {
@@ -463,32 +464,160 @@ pub struct InMemoryCollection {
     pub documents: HashMap<String, Document>,
 }
 
+/// Health monitoring configuration for ChromaDB
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChromaHealthConfig {
+    pub check_interval_seconds: u64,
+    pub timeout_seconds: u64,
+    pub max_retry_attempts: u32,
+    pub retry_backoff_seconds: u64,
+    pub auto_recovery: bool,
+    pub operation_timeout_seconds: u64,
+}
+
+impl Default for ChromaHealthConfig {
+    fn default() -> Self {
+        Self {
+            check_interval_seconds: 30, // Check every 30 seconds
+            timeout_seconds: 5,         // Quick timeout for health checks
+            max_retry_attempts: 3,      // Standard retry attempts
+            retry_backoff_seconds: 1,   // Fast backoff for local operations
+            auto_recovery: true,        // Enable auto-recovery
+            operation_timeout_seconds: 30, // Timeout for operations
+        }
+    }
+}
+
+/// Health monitoring statistics for ChromaDB
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChromaHealthStats {
+    pub is_healthy: bool,
+    pub last_check_time: Option<u64>,
+    pub last_successful_operation: Option<u64>,
+    pub consecutive_failures: u32,
+    pub total_operations: u64,
+    pub total_failures: u64,
+    pub average_operation_time_ms: f64,
+    pub total_collections: usize,
+    pub total_documents: usize,
+    pub memory_usage_estimate_bytes: usize,
+}
+
+impl Default for ChromaHealthStats {
+    fn default() -> Self {
+        Self {
+            is_healthy: true, // Start as healthy for in-memory implementation
+            last_check_time: None,
+            last_successful_operation: None,
+            consecutive_failures: 0,
+            total_operations: 0,
+            total_failures: 0,
+            average_operation_time_ms: 0.0,
+            total_collections: 0,
+            total_documents: 0,
+            memory_usage_estimate_bytes: 0,
+        }
+    }
+}
+
+/// Health monitoring for ChromaDB
+pub struct ChromaHealthMonitor {
+    config: ChromaHealthConfig,
+    stats: Arc<TokioMutex<ChromaHealthStats>>,
+    is_monitoring: Arc<AtomicBool>,
+}
+
+impl ChromaHealthMonitor {
+    pub fn new(config: ChromaHealthConfig) -> Self {
+        Self {
+            config,
+            stats: Arc::new(TokioMutex::new(ChromaHealthStats::default())),
+            is_monitoring: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    /// Get current health statistics
+    pub async fn get_stats(&self) -> ChromaHealthStats {
+        self.stats.lock().await.clone()
+    }
+
+    /// Record an operation result
+    pub async fn record_operation(&self, success: bool, operation_time: Duration) {
+        let mut stats = self.stats.lock().await;
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        stats.total_operations += 1;
+
+        if success {
+            stats.is_healthy = true;
+            stats.last_successful_operation = Some(now);
+            stats.consecutive_failures = 0;
+        } else {
+            stats.consecutive_failures += 1;
+            stats.total_failures += 1;
+            
+            // Consider unhealthy if too many consecutive failures
+            if stats.consecutive_failures >= self.config.max_retry_attempts {
+                stats.is_healthy = false;
+            }
+        }
+
+        // Update running average operation time
+        let total_ops = stats.total_operations as f64;
+        let new_time = operation_time.as_millis() as f64;
+        stats.average_operation_time_ms = 
+            ((stats.average_operation_time_ms * (total_ops - 1.0)) + new_time) / total_ops;
+    }
+
+    /// Update collection and document counts
+    pub async fn update_counts(&self, collections: usize, documents: usize, memory_estimate: usize) {
+        let mut stats = self.stats.lock().await;
+        stats.total_collections = collections;
+        stats.total_documents = documents;
+        stats.memory_usage_estimate_bytes = memory_estimate;
+        
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        stats.last_check_time = Some(now);
+    }
+
+    /// Check if service should be considered healthy
+    pub async fn is_healthy(&self) -> bool {
+        let stats = self.stats.lock().await;
+        stats.is_healthy && stats.consecutive_failures < self.config.max_retry_attempts
+    }
+}
+
 pub struct ChromaManager {
     collections: HashMap<String, InMemoryCollection>,
     query_cache: QueryCache,
     batch_processor: Option<EmbeddingBatchProcessor>,
+    health_monitor: Arc<ChromaHealthMonitor>,
 }
 
 impl ChromaManager {
     pub fn new(_db_path: &str) -> Result<Self, Box<dyn Error>> {
-        // Initialize with default cache configuration
-        let cache_config = CacheConfig::default();
-        let query_cache = QueryCache::new(cache_config);
-        
-        Ok(Self {
-            collections: HashMap::new(),
-            query_cache,
-            batch_processor: None,
-        })
+        Self::new_with_configs(_db_path, CacheConfig::default(), ChromaHealthConfig::default())
     }
 
     pub fn new_with_cache_config(_db_path: &str, cache_config: CacheConfig) -> Result<Self, Box<dyn Error>> {
+        Self::new_with_configs(_db_path, cache_config, ChromaHealthConfig::default())
+    }
+
+    pub fn new_with_configs(_db_path: &str, cache_config: CacheConfig, health_config: ChromaHealthConfig) -> Result<Self, Box<dyn Error>> {
         let query_cache = QueryCache::new(cache_config);
+        let health_monitor = Arc::new(ChromaHealthMonitor::new(health_config));
         
         Ok(Self {
             collections: HashMap::new(),
             query_cache,
             batch_processor: None,
+            health_monitor,
         })
     }
 
@@ -823,6 +952,151 @@ impl ChromaManager {
             Ok(document_id)
         }
     }
+
+    /// Execute operation with health monitoring and error handling
+    pub async fn with_health_monitoring<F, T>(&self, operation_name: &str, operation: F) -> Result<T, Box<dyn Error>>
+    where
+        F: FnOnce() -> Result<T, Box<dyn Error>>,
+    {
+        let start_time = Instant::now();
+        
+        // Attempt the operation
+        match operation() {
+            Ok(result) => {
+                let operation_time = start_time.elapsed();
+                self.health_monitor.record_operation(true, operation_time).await;
+                
+                // Update collection and document counts
+                self.update_health_stats().await?;
+                
+                Ok(result)
+            }
+            Err(e) => {
+                let operation_time = start_time.elapsed();
+                self.health_monitor.record_operation(false, operation_time).await;
+                
+                Err(format!("{} failed: {}", operation_name, e).into())
+            }
+        }
+    }
+
+    /// Update health statistics with current collection and document counts
+    async fn update_health_stats(&self) -> Result<(), Box<dyn Error>> {
+        let collection_count = self.collections.len();
+        let document_count: usize = self.collections.values()
+            .map(|collection| collection.documents.len())
+            .sum();
+        
+        // Rough memory estimate (this would be more accurate with real ChromaDB)
+        let memory_estimate = document_count * 1024; // Rough estimate: 1KB per document
+        
+        self.health_monitor
+            .update_counts(collection_count, document_count, memory_estimate)
+            .await;
+        
+        Ok(())
+    }
+
+    /// Get health monitoring statistics
+    pub async fn get_health_stats(&self) -> ChromaHealthStats {
+        self.health_monitor.get_stats().await
+    }
+
+    /// Check if ChromaDB service is healthy
+    pub async fn is_healthy(&self) -> bool {
+        self.health_monitor.is_healthy().await
+    }
+
+    /// Start background health monitoring
+    pub async fn start_health_monitoring(&self) {
+        if self.health_monitor.is_monitoring.swap(true, Ordering::SeqCst) {
+            return; // Already monitoring
+        }
+
+        let health_monitor = self.health_monitor.clone();
+        let collections_clone = Arc::new(TokioMutex::new(&self.collections as *const HashMap<String, InMemoryCollection>));
+        
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(
+                Duration::from_secs(health_monitor.config.check_interval_seconds)
+            );
+            
+            while health_monitor.is_monitoring.load(Ordering::SeqCst) {
+                interval.tick().await;
+                
+                // Update health stats periodically
+                // For in-memory implementation, we're always "healthy" unless operations fail
+                let now = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
+                
+                let mut stats = health_monitor.stats.lock().await;
+                stats.last_check_time = Some(now);
+            }
+        });
+    }
+
+    /// Stop background health monitoring
+    pub fn stop_health_monitoring(&self) {
+        self.health_monitor.is_monitoring.store(false, Ordering::SeqCst);
+    }
+
+    /// Validate ChromaDB connection (for future real ChromaDB integration)
+    pub async fn validate_connection(&self) -> Result<bool, Box<dyn Error>> {
+        // For in-memory implementation, always return true
+        // In future real ChromaDB integration, this would test actual connection
+        let start_time = Instant::now();
+        
+        // Simulate connection validation by checking if we can perform basic operations
+        let validation_result = self.with_health_monitoring("connection_validation", || {
+            // Test basic functionality
+            if self.collections.len() >= 0 {
+                Ok(true)
+            } else {
+                Err("Collections HashMap is invalid".into())
+            }
+        }).await;
+
+        match validation_result {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                eprintln!("ChromaDB connection validation failed: {}", e);
+                Ok(false)
+            }
+        }
+    }
+
+    /// Perform health check with retry mechanism
+    pub async fn check_connection_with_retry(&self) -> Result<bool, Box<dyn Error>> {
+        let mut last_error = None;
+        
+        for attempt in 1..=self.health_monitor.config.max_retry_attempts {
+            match self.validate_connection().await {
+                Ok(is_healthy) => {
+                    return Ok(is_healthy);
+                }
+                Err(e) => {
+                    last_error = Some(e);
+                    
+                    // If this wasn't the last attempt, wait before retrying
+                    if attempt < self.health_monitor.config.max_retry_attempts {
+                        let backoff_duration = Duration::from_secs(
+                            self.health_monitor.config.retry_backoff_seconds * attempt as u64
+                        );
+                        tokio::time::sleep(backoff_duration).await;
+                    }
+                }
+            }
+        }
+        
+        // All attempts failed
+        if let Some(error) = last_error {
+            Err(error)
+        } else {
+            Err("Connection check failed after all retry attempts".into())
+        }
+    }
 }
 
 // Note: Ollama embedding function integration is planned for future releases
@@ -1004,6 +1278,77 @@ pub fn is_batch_processing_enabled(
 ) -> Result<bool, String> {
     let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
     Ok(manager.is_batch_processing_enabled())
+}
+
+// ChromaDB Health monitoring commands
+
+#[tauri::command]
+pub async fn get_chroma_health_stats(
+    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+) -> Result<ChromaHealthStats, String> {
+    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    Ok(manager.get_health_stats().await)
+}
+
+#[tauri::command]
+pub async fn check_chroma_health(
+    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+) -> Result<bool, String> {
+    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    Ok(manager.is_healthy().await)
+}
+
+#[tauri::command]
+pub async fn validate_chroma_connection(
+    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+) -> Result<bool, String> {
+    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    manager.validate_connection().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn check_chroma_connection_with_retry(
+    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+) -> Result<bool, String> {
+    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    manager.check_connection_with_retry().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn start_chroma_health_monitoring(
+    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+) -> Result<(), String> {
+    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    manager.start_health_monitoring().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn stop_chroma_health_monitoring(
+    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+) -> Result<(), String> {
+    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    manager.stop_health_monitoring();
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn check_chroma_connection_detailed(
+    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+) -> Result<serde_json::Value, String> {
+    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    
+    let is_connected = manager.check_connection_with_retry().await.map_err(|e| e.to_string())?;
+    let health_stats = manager.get_health_stats().await;
+    let is_healthy = manager.is_healthy().await;
+    
+    Ok(serde_json::json!({
+        "connected": is_connected,
+        "healthy": is_healthy,
+        "health_stats": health_stats,
+        "implementation": "in_memory",
+        "ready_for_real_chromadb": true
+    }))
 }
 
 // Note: Additional tests will be added when ChromaDB integration is stabilized

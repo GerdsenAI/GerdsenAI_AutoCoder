@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -20,15 +22,163 @@ pub struct SearchResponse {
     pub results: Vec<SearchResult>,
 }
 
+/// Health monitoring configuration for SearXNG
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearXNGHealthConfig {
+    pub check_interval_seconds: u64,
+    pub timeout_seconds: u64,
+    pub max_retry_attempts: u32,
+    pub retry_backoff_seconds: u64,
+    pub auto_reconnect: bool,
+    pub graceful_degradation: bool,
+}
+
+impl Default for SearXNGHealthConfig {
+    fn default() -> Self {
+        Self {
+            check_interval_seconds: 60, // Check every minute (less frequent than Ollama)
+            timeout_seconds: 15,        // Longer timeout for web service
+            max_retry_attempts: 2,      // Fewer retries since it's optional
+            retry_backoff_seconds: 3,   // Longer backoff
+            auto_reconnect: true,       // Enable auto-reconnect
+            graceful_degradation: true, // Enable graceful degradation
+        }
+    }
+}
+
+/// Health monitoring statistics for SearXNG
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearXNGHealthStats {
+    pub is_healthy: bool,
+    pub is_degraded: bool, // Service available but degraded
+    pub last_check_time: Option<u64>,
+    pub last_successful_check: Option<u64>,
+    pub consecutive_failures: u32,
+    pub total_checks: u64,
+    pub total_failures: u64,
+    pub average_response_time_ms: f64,
+    pub degradation_reason: Option<String>,
+}
+
+impl Default for SearXNGHealthStats {
+    fn default() -> Self {
+        Self {
+            is_healthy: false,
+            is_degraded: false,
+            last_check_time: None,
+            last_successful_check: None,
+            consecutive_failures: 0,
+            total_checks: 0,
+            total_failures: 0,
+            average_response_time_ms: 0.0,
+            degradation_reason: None,
+        }
+    }
+}
+
+/// Health monitoring for SearXNG with graceful degradation
+pub struct SearXNGHealthMonitor {
+    config: SearXNGHealthConfig,
+    stats: Arc<Mutex<SearXNGHealthStats>>,
+    is_monitoring: Arc<AtomicBool>,
+}
+
+impl SearXNGHealthMonitor {
+    pub fn new(config: SearXNGHealthConfig) -> Self {
+        Self {
+            config,
+            stats: Arc::new(Mutex::new(SearXNGHealthStats::default())),
+            is_monitoring: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    /// Get current health statistics
+    pub async fn get_stats(&self) -> SearXNGHealthStats {
+        self.stats.lock().await.clone()
+    }
+
+    /// Record a health check result with graceful degradation logic
+    pub async fn record_check(&self, success: bool, response_time: Duration, error: Option<&str>) {
+        let mut stats = self.stats.lock().await;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        stats.last_check_time = Some(now);
+        stats.total_checks += 1;
+
+        if success {
+            stats.is_healthy = true;
+            stats.is_degraded = false;
+            stats.last_successful_check = Some(now);
+            stats.consecutive_failures = 0;
+            stats.degradation_reason = None;
+        } else {
+            stats.consecutive_failures += 1;
+            stats.total_failures += 1;
+
+            // Implement graceful degradation logic
+            if self.config.graceful_degradation {
+                if stats.consecutive_failures >= self.config.max_retry_attempts {
+                    stats.is_healthy = false;
+                    stats.is_degraded = true;
+                    stats.degradation_reason = Some(format!(
+                        "Service unavailable: {}",
+                        error.unwrap_or("Connection failed")
+                    ));
+                } else {
+                    // Still consider it healthy but degraded for the first few failures
+                    stats.is_healthy = true;
+                    stats.is_degraded = true;
+                    stats.degradation_reason = Some("Intermittent connectivity issues".to_string());
+                }
+            } else {
+                stats.is_healthy = false;
+                stats.is_degraded = false;
+            }
+        }
+
+        // Update running average response time
+        let total_checks = stats.total_checks as f64;
+        let new_time = response_time.as_millis() as f64;
+        stats.average_response_time_ms = 
+            ((stats.average_response_time_ms * (total_checks - 1.0)) + new_time) / total_checks;
+    }
+
+    /// Check if service should be considered available (healthy or degraded but functional)
+    pub async fn is_available(&self) -> bool {
+        let stats = self.stats.lock().await;
+        if self.config.graceful_degradation {
+            stats.is_healthy || (stats.is_degraded && stats.consecutive_failures < self.config.max_retry_attempts * 2)
+        } else {
+            stats.is_healthy
+        }
+    }
+
+    /// Check if service is in degraded state
+    pub async fn is_degraded(&self) -> bool {
+        let stats = self.stats.lock().await;
+        stats.is_degraded
+    }
+}
+
 #[derive(Clone)]
 pub struct SearXNGClient {
     base_url: Arc<Mutex<String>>,
     client: Client,
     default_engines: Arc<Mutex<Vec<String>>>,
+    health_monitor: Arc<SearXNGHealthMonitor>,
 }
 
 impl SearXNGClient {
     pub fn new(base_url: Option<String>) -> Self {
+        Self::new_with_health_config(base_url, SearXNGHealthConfig::default())
+    }
+
+    pub fn new_with_health_config(base_url: Option<String>, health_config: SearXNGHealthConfig) -> Self {
+        let health_monitor = Arc::new(SearXNGHealthMonitor::new(health_config));
+        
         Self {
             base_url: Arc::new(Mutex::new(
                 base_url.unwrap_or_else(|| "http://localhost:8080".to_string())
@@ -40,6 +190,7 @@ impl SearXNGClient {
                 "google".to_string(),
                 "duckduckgo".to_string(),
             ])),
+            health_monitor,
         }
     }
 
@@ -152,17 +303,139 @@ impl SearXNGClient {
         Ok(results)
     }
 
+    /// Enhanced connection check with health monitoring and graceful degradation
     pub async fn check_connection(&self) -> Result<bool, Box<dyn Error + Send>> {
+        self.check_connection_with_retry().await
+    }
+
+    /// Check connection with automatic retry and health monitoring
+    pub async fn check_connection_with_retry(&self) -> Result<bool, Box<dyn Error + Send>> {
+        let start_time = Instant::now();
+        let mut last_error_msg = None;
+        
+        for attempt in 1..=self.health_monitor.config.max_retry_attempts {
+            match self.perform_health_check().await {
+                Ok(is_healthy) => {
+                    let response_time = start_time.elapsed();
+                    self.health_monitor.record_check(is_healthy, response_time, None).await;
+                    return Ok(is_healthy);
+                }
+                Err(e) => {
+                    let error_msg = e.to_string();
+                    last_error_msg = Some(error_msg.clone());
+                    
+                    // If this wasn't the last attempt, wait before retrying
+                    if attempt < self.health_monitor.config.max_retry_attempts {
+                        let backoff_duration = Duration::from_secs(
+                            self.health_monitor.config.retry_backoff_seconds * attempt as u64
+                        );
+                        tokio::time::sleep(backoff_duration).await;
+                    }
+                }
+            }
+        }
+        
+        // All attempts failed
+        let response_time = start_time.elapsed();
+        self.health_monitor.record_check(false, response_time, last_error_msg.as_deref()).await;
+        
+        // With graceful degradation, we might still be "available" even if unhealthy
+        if self.health_monitor.config.graceful_degradation {
+            Ok(self.health_monitor.is_available().await)
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// Perform actual health check against SearXNG API
+    async fn perform_health_check(&self) -> Result<bool, Box<dyn Error + Send>> {
         let base_url = self.base_url.lock().await.clone();
         let url = format!("{}/healthz", base_url);
+        let timeout_duration = Duration::from_secs(self.health_monitor.config.timeout_seconds);
         
-        match self.client.get(&url)
-            .timeout(std::time::Duration::from_secs(10))
-            .send()
-            .await 
-        {
-            Ok(response) => Ok(response.status().is_success()),
-            Err(_) => Ok(false),
+        let response = tokio::time::timeout(
+            timeout_duration,
+            self.client.get(&url).send()
+        ).await??;
+        
+        Ok(response.status().is_success())
+    }
+
+    /// Get health monitoring statistics
+    pub async fn get_health_stats(&self) -> SearXNGHealthStats {
+        self.health_monitor.get_stats().await
+    }
+
+    /// Check if the service is currently available (healthy or degraded but functional)
+    pub async fn is_available(&self) -> bool {
+        self.health_monitor.is_available().await
+    }
+
+    /// Check if the service is in degraded state
+    pub async fn is_degraded(&self) -> bool {
+        self.health_monitor.is_degraded().await
+    }
+
+    /// Start background health monitoring
+    pub async fn start_health_monitoring(&self) {
+        if self.health_monitor.is_monitoring.swap(true, Ordering::SeqCst) {
+            return; // Already monitoring
+        }
+
+        let client = self.clone();
+        let health_monitor = self.health_monitor.clone();
+        
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(
+                Duration::from_secs(health_monitor.config.check_interval_seconds)
+            );
+            
+            while health_monitor.is_monitoring.load(Ordering::SeqCst) {
+                interval.tick().await;
+                
+                // Perform health check
+                let _ = client.check_connection_with_retry().await;
+            }
+        });
+    }
+
+    /// Stop background health monitoring
+    pub fn stop_health_monitoring(&self) {
+        self.health_monitor.is_monitoring.store(false, Ordering::SeqCst);
+    }
+
+    /// Execute search with graceful degradation
+    pub async fn search_with_fallback(&self, query: &str, engines: Option<Vec<String>>) -> Result<SearchResult, Box<dyn Error + Send>> {
+        // Check if service is available
+        if !self.is_available().await {
+            return Err("SearXNG service is currently unavailable".into());
+        }
+
+        // If service is degraded, provide degraded response
+        if self.is_degraded().await {
+            let health_stats = self.get_health_stats().await;
+            let degradation_reason = health_stats.degradation_reason
+                .unwrap_or_else(|| "Service is experiencing issues".to_string());
+            
+            // Return a fallback result indicating degraded service
+            return Ok(SearchResult {
+                title: "Search Service Degraded".to_string(),
+                url: "".to_string(),
+                content: format!(
+                    "Search functionality is currently limited due to service issues: {}. Please try again later.",
+                    degradation_reason
+                ),
+                engine: "fallback".to_string(),
+                score: Some(0.0),
+            });
+        }
+
+        // Service is healthy, perform normal search
+        let results = self.search(query, engines).await?;
+        if let Some(first_result) = results.first() {
+            Ok(first_result.clone())
+        } else {
+            Err("No search results found".into())
         }
     }
 }
