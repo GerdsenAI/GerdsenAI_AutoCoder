@@ -373,16 +373,55 @@ use futures_util::StreamExt;
 mod tests {
     use super::*;
     use mockito::Server;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+    use std::time::Duration;
+    use tokio::time::timeout;
     
+    // Helper function to create test model data
+    fn create_test_model(name: &str) -> ModelInfo {
+        ModelInfo {
+            name: name.to_string(),
+            modified_at: "2025-06-01T12:00:00Z".to_string(),
+            size: 4200000000,
+            digest: "sha256:1234567890abcdef".to_string(),
+            details: Some(ModelDetails {
+                parameter_size: Some("8B".to_string()),
+                quantization_level: Some("Q4_0".to_string()),
+                format: Some("gguf".to_string()),
+                family: Some("llama".to_string()),
+                families: Some(vec!["llama".to_string()]),
+            }),
+        }
+    }
+
     #[tokio::test]
-    async fn test_list_models() {
+    async fn test_client_creation() {
+        // Test default URL
+        let client = OllamaClient::new(None);
+        assert_eq!(client.get_base_url(), "http://localhost:11434");
+        
+        // Test custom URL
+        let client = OllamaClient::new(Some("http://custom:8080".to_string()));
+        assert_eq!(client.get_base_url(), "http://custom:8080");
+    }
+
+    #[tokio::test] 
+    async fn test_set_base_url() {
+        let mut client = OllamaClient::new(None);
+        client.set_base_url("http://new-url:9090".to_string());
+        assert_eq!(client.get_base_url(), "http://new-url:9090");
+    }
+
+    #[tokio::test]
+    async fn test_list_models_success() {
         let mut server = Server::new();
         
         let mock = server
             .mock("GET", "/api/tags")
             .with_status(200)
             .with_header("content-type", "application/json")
-            .with_body(r#"{"models":[{"name":"llama3.2:latest","modified_at":"2025-06-01T12:00:00Z","size":4200000000,"digest":"sha256:1234567890abcdef","details":{"parameter_size":"8B","quantization_level":"Q4_0","format":"gguf","family":"llama"}}]}"#)
+            .with_body(r#"{"models":[{"name":"llama3.2:latest","modified_at":"2025-06-01T12:00:00Z","size":4200000000,"digest":"sha256:1234567890abcdef","details":{"parameter_size":"8B","quantization_level":"Q4_0","format":"gguf","family":"llama","families":["llama"]}}]}"#)
             .create();
             
         let client = OllamaClient::new(Some(server.url()));
@@ -390,27 +429,552 @@ mod tests {
         
         assert_eq!(models.len(), 1);
         assert_eq!(models[0].name, "llama3.2:latest");
-        assert_eq!(models[0].details.as_ref().unwrap().parameter_size.as_deref(), Some("8B"));
+        assert_eq!(models[0].size, 4200000000);
+        let details = models[0].details.as_ref().unwrap();
+        assert_eq!(details.parameter_size.as_deref(), Some("8B"));
+        assert_eq!(details.quantization_level.as_deref(), Some("Q4_0"));
         
         mock.assert();
     }
-    
+
     #[tokio::test]
-    async fn test_generate_completion() {
+    async fn test_list_models_empty_response() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("GET", "/api/tags")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"models":[]}"#)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let models = client.list_models().await.unwrap();
+        
+        assert_eq!(models.len(), 0);
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_list_models_http_error() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("GET", "/api/tags")
+            .with_status(500)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let result = client.list_models().await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Failed to list models: 500"));
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_list_models_malformed_json() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("GET", "/api/tags")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"invalid": json"#)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let result = client.list_models().await;
+        
+        assert!(result.is_err());
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_get_model_from_cache() {
+        let mut server = Server::new();
+        
+        // Setup initial list_models call to populate cache
+        let mock = server
+            .mock("GET", "/api/tags")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"models":[{"name":"cached-model","modified_at":"2025-06-01T12:00:00Z","size":1000000000,"digest":"sha256:abcdef123456","details":null}]}"#)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        
+        // First call to populate cache
+        let _ = client.list_models().await.unwrap();
+        mock.assert();
+        
+        // Second call should use cache (no additional HTTP request)
+        let model = client.get_model("cached-model").await.unwrap();
+        assert!(model.is_some());
+        assert_eq!(model.unwrap().name, "cached-model");
+    }
+
+    #[tokio::test]
+    async fn test_get_model_not_found() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("GET", "/api/tags")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"models":[]}"#)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let model = client.get_model("nonexistent-model").await.unwrap();
+        
+        assert!(model.is_none());
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_generate_completion_success() {
         let mut server = Server::new();
         
         let mock = server
             .mock("POST", "/api/generate")
             .with_status(200)
             .with_header("content-type", "application/json")
-            .with_body(r#"{"model":"llama3.2:latest","response":"This is a test response."}"#)
+            .with_body(r#"{"model":"llama3.2:latest","response":"This is a test response.","done":true}"#)
             .create();
             
         let client = OllamaClient::new(Some(server.url()));
         let response = client.generate_completion("llama3.2:latest", "Test prompt", None).await.unwrap();
         
         assert_eq!(response, "This is a test response.");
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_generate_completion_with_options() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("POST", "/api/generate")
+            .match_body(mockito::Matcher::JsonString(r#"{"model":"test-model","prompt":"test prompt","stream":false,"options":{"temperature":0.8,"top_p":0.9,"max_tokens":100}}"#.to_string()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"model":"test-model","response":"Generated response","done":true}"#)
+            .create();
+        
+        let client = OllamaClient::new(Some(server.url()));
+        let options = GenerateOptions {
+            temperature: Some(0.8),
+            top_p: Some(0.9),
+            top_k: None,
+            max_tokens: Some(100),
+        };
+        
+        let response = client.generate_completion("test-model", "test prompt", Some(options)).await.unwrap();
+        assert_eq!(response, "Generated response");
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_generate_completion_http_error() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("POST", "/api/generate")
+            .with_status(400)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let result = client.generate_completion("test-model", "test prompt", None).await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Failed to generate completion: 400"));
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_generate_stream_success() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("POST", "/api/generate")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"model":"test-model","response":"Hello","done":false}
+{"model":"test-model","response":" world","done":false}
+{"model":"test-model","response":"!","done":true}
+"#)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let tokens = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let tokens_clone = tokens.clone();
+        
+        let result = client.generate_stream(
+            "test-model",
+            "test prompt",
+            None,
+            move |token| {
+                tokens_clone.lock().unwrap().push(token.to_string());
+            }
+        ).await;
+        
+        assert!(result.is_ok());
+        let collected_tokens = tokens.lock().unwrap();
+        assert_eq!(*collected_tokens, vec!["Hello", " world", "!"]);
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_generate_stream_http_error() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("POST", "/api/generate") 
+            .with_status(500)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let result = client.generate_stream(
+            "test-model",
+            "test prompt",
+            None,
+            |_| {}
+        ).await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Failed to generate stream: 500"));
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_chat_non_streaming() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("POST", "/api/chat")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"model":"test-model","message":{"role":"assistant","content":"Hello there!"},"done":true}"#)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: "Hello".to_string(),
+        }];
+        
+        let response = client.chat("test-model", messages, None, Option::<fn(&str)>::None).await.unwrap();
+        
+        assert_eq!(response.role, "assistant");
+        assert_eq!(response.content, "Hello there!");
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_chat_streaming() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("POST", "/api/chat")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"model":"test-model","message":{"role":"assistant","content":"Hello"},"done":false}
+{"model":"test-model","message":{"role":"assistant","content":" there"},"done":false}
+{"model":"test-model","message":{"role":"assistant","content":"!"},"done":true}
+"#)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: "Hello".to_string(),
+        }];
+        
+        let tokens = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let tokens_clone = tokens.clone();
+        
+        let response = client.chat(
+            "test-model", 
+            messages, 
+            None, 
+            Some(move |token: &str| {
+                tokens_clone.lock().unwrap().push(token.to_string());
+            })
+        ).await.unwrap();
+        
+        assert_eq!(response.role, "assistant");
+        assert_eq!(response.content, "Hello there!");
+        
+        let collected_tokens = tokens.lock().unwrap();
+        assert_eq!(*collected_tokens, vec!["Hello", " there", "!"]);
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_chat_http_error() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("POST", "/api/chat")
+            .with_status(404)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: "Hello".to_string(),
+        }];
+        
+        let result = client.chat("nonexistent-model", messages, None, Option::<fn(&str)>::None).await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Failed to chat: 404"));
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_create_embedding_success() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("POST", "/api/embeddings")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"embedding":[0.1, 0.2, 0.3, 0.4, 0.5]}"#)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let embedding = client.create_embedding("test-embedding-model", "test text").await.unwrap();
+        
+        assert_eq!(embedding.len(), 5);
+        assert_eq!(embedding, vec![0.1, 0.2, 0.3, 0.4, 0.5]);
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_create_embedding_http_error() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("POST", "/api/embeddings")
+            .with_status(500)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let result = client.create_embedding("test-model", "test text").await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Failed to create embedding: 500"));
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_check_connection_success() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("GET", "/api/version")
+            .with_status(200)
+            .with_body(r#"{"version":"0.1.0"}"#)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let connected = client.check_connection().await.unwrap();
+        
+        assert!(connected);
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_check_connection_failure() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("GET", "/api/version")
+            .with_status(500)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let connected = client.check_connection().await.unwrap();
+        
+        assert!(!connected);
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_check_connection_network_error() {
+        // Use an invalid URL to simulate network failure
+        let client = OllamaClient::new(Some("http://invalid-host:99999".to_string()));
+        let connected = client.check_connection().await.unwrap();
+        
+        assert!(!connected);
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_model_requests() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("GET", "/api/tags")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"models":[{"name":"concurrent-model","modified_at":"2025-06-01T12:00:00Z","size":1000000000,"digest":"sha256:concurrent123","details":null}]}"#)
+            .expect(1) // Should only be called once due to caching
+            .create();
+            
+        let client = Arc::new(OllamaClient::new(Some(server.url())));
+        
+        // Make multiple concurrent requests for the same model
+        let handles: Vec<_> = (0..5).map(|_| {
+            let client_clone = client.clone();
+            tokio::spawn(async move {
+                client_clone.get_model("concurrent-model").await
+            })
+        }).collect();
+        
+        // Wait for all requests to complete
+        for handle in handles {
+            let result = handle.await.unwrap().unwrap();
+            assert!(result.is_some());
+            assert_eq!(result.unwrap().name, "concurrent-model");
+        }
         
         mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_streaming_with_malformed_json() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("POST", "/api/generate")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"model":"test-model","response":"Hello","done":false}
+invalid json line
+{"model":"test-model","response":" world","done":true}
+"#)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let tokens = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let tokens_clone = tokens.clone();
+        
+        let result = client.generate_stream(
+            "test-model",
+            "test prompt",
+            None,
+            move |token| {
+                tokens_clone.lock().unwrap().push(token.to_string());
+            }
+        ).await;
+        
+        assert!(result.is_ok());
+        let collected_tokens = tokens.lock().unwrap();
+        // Should skip malformed line and continue processing
+        assert_eq!(*collected_tokens, vec!["Hello", " world"]);
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_request_timeout() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("POST", "/api/generate")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body_from_fn(|| {
+                // Simulate a slow response
+                std::thread::sleep(Duration::from_millis(100));
+                r#"{"model":"test-model","response":"Slow response","done":true}"#.to_string()
+            })
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        
+        // Test with a very short timeout
+        let result = timeout(
+            Duration::from_millis(50),
+            client.generate_completion("test-model", "test prompt", None)
+        ).await;
+        
+        assert!(result.is_err()); // Should timeout
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_large_response_handling() {
+        let mut server = Server::new();
+        
+        let large_response = "x".repeat(10000); // 10KB response
+        let response_json = format!(r#"{{"model":"test-model","response":"{}","done":true}}"#, large_response);
+        
+        let mock = server
+            .mock("POST", "/api/generate")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(&response_json)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let response = client.generate_completion("test-model", "test prompt", None).await.unwrap();
+        
+        assert_eq!(response.len(), 10000);
+        assert_eq!(response, large_response);
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_empty_prompt_handling() {
+        let mut server = Server::new();
+        
+        let mock = server
+            .mock("POST", "/api/generate")
+            .match_body(mockito::Matcher::JsonString(r#"{"model":"test-model","prompt":"","stream":false}"#.to_string()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"model":"test-model","response":"Empty prompt response","done":true}"#)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let response = client.generate_completion("test-model", "", None).await.unwrap();
+        
+        assert_eq!(response, "Empty prompt response");
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_cache_behavior_after_error() {
+        let mut server = Server::new();
+        
+        // First request fails
+        let mock1 = server
+            .mock("GET", "/api/tags")
+            .with_status(500)
+            .create();
+            
+        let client = OllamaClient::new(Some(server.url()));
+        let result1 = client.list_models().await;
+        assert!(result1.is_err());
+        mock1.assert();
+        
+        // Second request succeeds  
+        let mock2 = server
+            .mock("GET", "/api/tags")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"models":[{"name":"recovery-model","modified_at":"2025-06-01T12:00:00Z","size":1000000000,"digest":"sha256:recovery123","details":null}]}"#)
+            .create();
+            
+        let result2 = client.list_models().await;
+        assert!(result2.is_ok());
+        assert_eq!(result2.unwrap().len(), 1);
+        mock2.assert();
+        
+        // Third request should use cache
+        let model = client.get_model("recovery-model").await.unwrap();
+        assert!(model.is_some());
     }
 }
