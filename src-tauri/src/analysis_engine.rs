@@ -69,7 +69,7 @@ impl AnalysisEngine {
 
     /// Main entry point for deep analysis
     pub async fn analyze(
-        &self,
+        &mut self,
         prompt: &str,
         model: &str,
         config: AnalysisConfig,
@@ -111,7 +111,7 @@ impl AnalysisEngine {
 
     /// Socratic analysis mode - guided questioning
     async fn socratic_analysis(
-        &self,
+        &mut self,
         prompt: &str,
         model: &str,
         config: &AnalysisConfig,
@@ -126,7 +126,7 @@ impl AnalysisEngine {
 
     /// Run the Socratic questioning process
     async fn run_socratic_questioning(
-        &self,
+        &mut self,
         original_prompt: &str,
         model: &str,
         config: &AnalysisConfig,
@@ -218,7 +218,7 @@ impl AnalysisEngine {
 
     /// Systematic analysis mode - PDCA/OODA loop approach  
     async fn systematic_analysis(
-        &self,
+        &mut self,
         prompt: &str,
         model: &str,
         config: &AnalysisConfig,
@@ -370,12 +370,12 @@ impl AnalysisEngine {
 
     /// Save reasoning patterns to RAG for future learning
     async fn save_reasoning_to_rag(
-        &self,
+        &mut self,
         original_prompt: &str,
         reasoning_chain: &[QuestionAnswerChain],
         solution: &str,
     ) -> bool {
-        if let Some(manager) = &self.chroma_manager {
+        if let Some(manager) = &mut self.chroma_manager {
             // Create a comprehensive document that captures the reasoning pattern
             let reasoning_document = format!(
                 "Deep Analysis Pattern\n\nOriginal Problem: {}\n\nReasoning Process:\n{}\n\nFinal Solution: {}\n\nPattern Summary: This is a successful {} analysis with {} reasoning rounds and average confidence of {:.2}.",
@@ -428,9 +428,9 @@ impl AnalysisEngine {
             // Try to add to ChromaDB reasoning patterns collection
             match manager.add_documents(
                 "reasoning_patterns",
-                &[reasoning_document],
-                Some(&[metadata]),
-                Some(&[pattern_id]),
+                vec![reasoning_document],
+                vec![metadata],
+                Some(vec![pattern_id]),
             ) {
                 Ok(_) => {
                     println!("Successfully saved reasoning pattern to RAG");
@@ -468,8 +468,8 @@ impl AnalysisEngine {
     }
 
     /// Query similar reasoning patterns from RAG for enhanced analysis
-    pub async fn query_similar_patterns(&self, prompt: &str, limit: usize) -> Vec<String> {
-        if let Some(manager) = &self.chroma_manager {
+    pub async fn query_similar_patterns(&mut self, prompt: &str, limit: usize) -> Vec<String> {
+        if let Some(manager) = &mut self.chroma_manager {
             // Create a query that looks for similar problem patterns
             let query = format!(
                 "Similar problem to analyze: {} Find reasoning patterns for {} problems",

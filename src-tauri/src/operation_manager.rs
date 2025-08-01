@@ -177,17 +177,20 @@ impl OperationManager {
                     let operation = priority_queues[priority_level].remove(0);
                     let op_id = operation.id.clone();
                     operations_clone.insert(op_id.clone(), (operation.clone(), OperationStatus::Running { progress: None }));
-                    let permit = match semaphore_clone.try_acquire() {
-                        Ok(permit) => permit,
-                        Err(_) => {
-                            priority_queues[priority_level].push(operation);
-                            tokio::time::sleep(Duration::from_millis(100)).await;
-                            continue;
-                        }
-                    };
                     let ops_map = operations_clone.clone();
                     let memory_monitor_task = memory_monitor_clone.clone();
+                    let semaphore_task = semaphore_clone.clone();
                     tokio::spawn(async move {
+                        let permit = match semaphore_task.try_acquire() {
+                            Ok(permit) => permit,
+                            Err(_) => {
+                                // Operation couldn't acquire permit, mark as failed
+                                let mut updated_operation = operation.clone();
+                                updated_operation.completed_at = Some(SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs());
+                                ops_map.insert(op_id.clone(), (updated_operation, OperationStatus::Failed { error: "Could not acquire semaphore permit".to_string() }));
+                                return;
+                            }
+                        };
                         let start_time = Instant::now();
                         
                         // Estimate and allocate memory for operation

@@ -9,6 +9,7 @@ pub mod user_errors;
 pub mod ollama_client;
 pub mod chroma_manager;
 pub mod analysis_engine;
+pub mod thread_pool_manager;
 
 #[cfg(test)]
 mod tests;

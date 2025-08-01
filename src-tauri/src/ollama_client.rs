@@ -662,9 +662,9 @@ impl OllamaClient {
     }
 
     /// Check connection with automatic retry and health monitoring
-    pub async fn check_connection_with_retry(&self) -> Result<bool, Box<dyn Error>> {
+    pub async fn check_connection_with_retry(&self) -> Result<bool, Box<dyn Error + Send + Sync>> {
         let start_time = Instant::now();
-        let mut last_error = None;
+        let mut last_error: Option<Box<dyn Error + Send + Sync>> = None;
         
         for attempt in 1..=self.health_monitor.config.max_retry_attempts {
             match self.perform_health_check().await {
@@ -674,7 +674,7 @@ impl OllamaClient {
                     return Ok(is_healthy);
                 }
                 Err(e) => {
-                    last_error = Some(e);
+                    last_error = Some(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())));
                     
                     // If this wasn't the last attempt, wait before retrying
                     if attempt < self.health_monitor.config.max_retry_attempts {
@@ -793,8 +793,6 @@ impl OllamaClient {
         Err(last_error.unwrap_or_else(|| "Operation failed after all retry attempts".into()))
     }
 }
-
-use futures_util::StreamExt;
 
 #[cfg(test)]
 mod tests {
