@@ -12,6 +12,76 @@ When working on this project, use the specialized agents available:
 - **git-operations-expert** - For Git operations and workflow management
 - **code-reviewer** - For code review and quality assessment
 
+## Development Methodology: Inquiry-Based Learning
+
+When working on this codebase, use an inquiry-based approach to problem-solving and development:
+
+### Core Principles
+1. **Question First, Code Second** - Begin with understanding the 'why' before the 'how'
+2. **Challenge Assumptions** - What are we taking for granted that might be wrong?
+3. **Explore Root Causes** - Symptoms are not problems; dig deeper
+4. **Test Understanding** - Can you explain it to someone else?
+
+### Inquiry Framework for Development
+
+#### 1. Problem Definition Phase
+- What exactly are we trying to solve?
+- What evidence do we have that this is the real problem?
+- What would success look like?
+- What constraints are we working within?
+
+#### 2. Solution Exploration Phase
+- What are the possible approaches?
+- What are the trade-offs of each approach?
+- What similar problems have been solved before?
+- What could go wrong with our proposed solution?
+
+#### 3. Implementation Verification Phase
+- Does our implementation match our understanding?
+- What edge cases haven't we considered?
+- How do we know this actually solves the problem?
+- What would break this solution?
+
+### Practical Examples
+
+#### Bug Investigation
+```
+Initial report: "App crashes on startup"
+? Don't: Immediately start debugging the startup code
+? Do: Ask "Under what conditions? Every time? After updates? For all users?"
+```
+
+#### Feature Development
+```
+Request: "Add dark mode"
+? Don't: Start implementing CSS changes
+? Do: Ask "What problem does dark mode solve for our users? How will they use it?"
+```
+
+#### Performance Optimization
+```
+Observation: "The app feels slow"
+? Don't: Start optimizing random functions
+? Do: Ask "What specific operations are slow? How are we measuring 'slow'?"
+```
+
+### Integration with Development Workflow
+
+1. **Before coding**: Question the requirements and approach
+2. **During coding**: Question your implementation choices
+3. **After coding**: Question whether you've actually solved the problem
+4. **During review**: Question what could be improved or might fail
+
+### Key Questions for Every Development Task
+
+- **Understanding**: Do I truly understand what I'm building and why?
+- **Assumptions**: What am I assuming that I should verify?
+- **Alternatives**: What other ways could this be done?
+- **Consequences**: What happens if this fails or succeeds?
+- **Learning**: What did this teach me about the system?
+
+This inquiry-based approach leads to deeper understanding, fewer bugs, and better solutions.
+
 ## Development Commands
 
 ### Frontend (React + TypeScript + Vite)

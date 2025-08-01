@@ -63,6 +63,17 @@
 
 For detailed setup instructions, see [WINDOWS_SETUP.md](./WINDOWS_SETUP.md).
 
+## Development Philosophy
+
+This project follows an **Inquiry-Based Learning** approach to development:
+
+- **Question First**: Understand the 'why' before the 'how'
+- **Challenge Assumptions**: Verify what we think we know
+- **Explore Alternatives**: Consider multiple solutions
+- **Learn Continuously**: Every bug is a learning opportunity
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
+
 ## Development
 
 ### Prerequisites

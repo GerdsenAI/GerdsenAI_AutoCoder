@@ -4,6 +4,7 @@
 
 Deep Analysis Mode is an optional toggle that enhances the AutoCoder's problem-solving capabilities for complex issues. Instead of philosophical overhead on every request, it's a power tool activated only when needed.
 
+**Note**: This is an application feature for end users, distinct from the Inquiry-Based Learning methodology used for development of the AutoCoder itself.
 ## When to Use
 
 ### Automatic Activation Suggestions
