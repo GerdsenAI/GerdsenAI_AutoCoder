@@ -1,0 +1,165 @@
+version: '3.8'
+
+services:
+  # Ollama service for local LLM
+  ollama:
+    image: ollama/ollama:latest
+    container_name: test-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./tests/fixtures/ollama/models:/root/.ollama/models
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test-network
+
+  # SearXNG for web search
+  searxng:
+    image: searxng/searxng:latest
+    container_name: test-searxng
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./tests/config/searxng:/etc/searxng:ro
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+      - SEARXNG_SECRET=test-secret-key
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test-network
+
+  # ChromaDB for vector storage
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: test-chromadb
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb-test-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+      - ALLOW_RESET=TRUE
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test-network
+
+  # Test runner service
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: test-runner
+    depends_on:
+      ollama:
+        condition: service_healthy
+      searxng:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - SEARXNG_HOST=http://searxng:8080
+      - CHROMA_HOST=http://chromadb:8000
+      - NODE_ENV=test
+      - CI=true
+    volumes:
+      - .:/app:ro
+      - /app/node_modules
+      - /app/src-tauri/target
+      - test-results:/app/test-results
+    networks:
+      - test-network
+    command: npm run test:all
+
+  # Mock OpenAI API for testing
+  openai-mock:
+    image: mockserver/mockserver:latest
+    container_name: test-openai-mock
+    ports:
+      - "1080:1080"
+    environment:
+      - MOCKSERVER_PROPERTY_FILE=/config/mockserver.properties
+      - MOCKSERVER_INITIALIZATION_JSON_PATH=/config/openai-mocks.json
+    volumes:
+      - ./tests/mocks/openai:/config:ro
+    networks:
+      - test-network
+
+  # Mock Anthropic API for testing
+  anthropic-mock:
+    image: mockserver/mockserver:latest
+    container_name: test-anthropic-mock
+    ports:
+      - "1081:1080"
+    environment:
+      - MOCKSERVER_PROPERTY_FILE=/config/mockserver.properties
+      - MOCKSERVER_INITIALIZATION_JSON_PATH=/config/anthropic-mocks.json
+    volumes:
+      - ./tests/mocks/anthropic:/config:ro
+    networks:
+      - test-network
+
+  # Performance monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: test-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./tests/config/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - test-network
+
+  # Grafana for test metrics visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: test-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./tests/config/grafana:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - test-network
+
+volumes:
+  chromadb-test-data:
+  test-results:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  test-network:
+    driver: bridge

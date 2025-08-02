@@ -1,0 +1,40 @@
+# Test runner Dockerfile
+FROM node:20-slim AS base
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    build-essential \
+    libwebkit2gtk-4.0-dev \
+    libssl-dev \
+    libgtk-3-dev \
+    libayatana-appindicator3-dev \
+    librsvg2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust for backend tests
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY src-tauri/Cargo.toml ./src-tauri/
+COPY src-tauri/Cargo.lock ./src-tauri/
+
+# Install Node dependencies
+RUN npm ci
+
+# Copy application code
+COPY . .
+
+# Build frontend for integration tests
+RUN npm run build
+
+# Create test results directory
+RUN mkdir -p /app/test-results
+
+# Default command runs all tests
+CMD ["npm", "run", "test:all"]
