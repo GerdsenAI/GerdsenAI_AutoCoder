@@ -1554,3 +1554,59 @@
     margin: 0.5rem;
   }
 }
+
+/* Model Selector Panel Styles */
+.model-selector-panel {
+  background: rgba(24, 24, 27, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  max-height: 500px;
+  overflow: hidden;
+}
+
+.model-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.model-panel-header h3 {
+  color: #e4e4e7;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.model-panel-content {
+  padding: 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Override MultiAIModelSelector styles for chat integration */
+.model-panel-content .multi-ai-selector {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.model-panel-content .selector-header {
+  display: none; /* Hide the header as we have our own */
+}
+
+/* Additional responsive adjustments for model selector */
+@media (max-width: 768px) {
+  .model-selector-panel {
+    margin: 0.5rem;
+    max-height: 400px;
+  }
+  
+  .model-panel-content {
+    max-height: 300px;
+  }
+}

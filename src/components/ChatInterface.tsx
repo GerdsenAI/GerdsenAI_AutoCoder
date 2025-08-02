@@ -7,9 +7,11 @@ import { coldarkDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ChatMessage, ChatSession, ISODateString } from '../types';
 import { validateMessage, validateModelName } from '../utils/validation';
 import { useContextManager } from '../hooks/useContextManager';
+import { useMultiAI } from '../hooks/useMultiAI';
 import { TokenBudgetBar } from './TokenBudgetBar';
 import { ContextFileList } from './ContextFileList';
 import { ContextControls } from './ContextControls';
+import { MultiAIModelSelector } from './MultiAIModelSelector';
 import './ChatInterface.css';
 
 // Utility function removed to fix build error
@@ -75,6 +77,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Context Window Management
   const [showContextPanel, setShowContextPanel] = useState(false);
   const contextManager = useContextManager();
+  
+  // Multi-AI Integration
+  const multiAI = useMultiAI();
+  const [showModelSelector, setShowModelSelector] = useState(false);
+  const [currentModel, setCurrentModel] = useState(model);
   
   // Deep Analysis Mode
   const [analysisMode, setAnalysisMode] = useState<'standard' | 'socratic' | 'systematic'>('standard');
@@ -210,14 +217,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       return;
     }
 
-    // Validate model name
-    const modelValidation = validateModelName(model);
-    if (!modelValidation.isValid) {
-      console.error('Model validation failed:', modelValidation.error);
-      alert(`Invalid model: ${modelValidation.error}`);
-      return;
-    }
-
     const userMessage: ChatMessage = {
       role: 'user',
       content: messageValidation.sanitized!,
@@ -233,57 +232,84 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     try {
       onSendMessage(userMessage);
 
-      unlistenRef.current = await listen<StreamEvent>('ollama-stream', (event) => {
-        streamingMessageRef.current += event.payload.token;
-        // Force re-render to show streaming content
-        setMessages((prev) => [...prev.slice(0, prev.length - 1), { ...prev[prev.length - 1], content: streamingMessageRef.current }]);
-
-        if (event.payload.done) {
-          const assistantMessage: ChatMessage = {
-            role: 'assistant',
-            content: streamingMessageRef.current,
-            timestamp: new Date().toISOString()
-          };
-          const finalMessages = [...updatedMessages, assistantMessage];
-          setMessages(finalMessages);
-          streamingMessageRef.current = '';
-          onSendMessage(assistantMessage);
-          setIsLoading(false);
-          if (unlistenRef.current) {
-            unlistenRef.current();
-            unlistenRef.current = null;
-          }
+      // Use multi-AI system for smart generation
+      const response = await multiAI.generateSmart(
+        userMessage.content,
+        undefined, // Let the system auto-detect capability
+        {
+          temperature: 0.7,
+          max_tokens: 2000,
+          stream: false // We'll handle streaming later
         }
-      });
+      );
 
-      await invoke('generate_stream_with_ollama', {
-        model: model,
-        prompt: userMessage.content,
-        useRag: ragEnabled,
-        sessionId: session.id,
-        collection: selectedCollection,
-        analysisMode: analysisMode,
-        maxRounds: maxRounds,
-        saveToRAG: saveToRAG
-      });
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: response.content,
+        timestamp: new Date().toISOString()
+      };
+
+      const finalMessages = [...updatedMessages, assistantMessage];
+      setMessages(finalMessages);
+      onSendMessage(assistantMessage);
 
     } catch (error) {
       console.error('Error generating response:', error);
-      const errorMessage: ChatMessage = {
-        role: 'assistant',
-        content: `Sorry, I encountered an error while generating a response: ${error}. Please check your connection to Ollama.`,
-        timestamp: new Date().toISOString()
-      };
-      const errorMessages = [...updatedMessages, errorMessage];
-      setMessages(errorMessages);
-      onSendMessage(errorMessage);
-      setIsLoading(false);
-      if (unlistenRef.current) {
-        unlistenRef.current();
-        unlistenRef.current = null;
+      
+      // Fallback to legacy Ollama if multi-AI fails
+      try {
+        unlistenRef.current = await listen<StreamEvent>('ollama-stream', (event) => {
+          streamingMessageRef.current += event.payload.token;
+          // Force re-render to show streaming content
+          setMessages((prev) => [...prev.slice(0, prev.length - 1), { ...prev[prev.length - 1], content: streamingMessageRef.current }]);
+
+          if (event.payload.done) {
+            const assistantMessage: ChatMessage = {
+              role: 'assistant',
+              content: streamingMessageRef.current,
+              timestamp: new Date().toISOString()
+            };
+            const finalMessages = [...updatedMessages, assistantMessage];
+            setMessages(finalMessages);
+            streamingMessageRef.current = '';
+            onSendMessage(assistantMessage);
+            setIsLoading(false);
+            if (unlistenRef.current) {
+              unlistenRef.current();
+              unlistenRef.current = null;
+            }
+          }
+        });
+
+        await invoke('generate_stream_with_ollama', {
+          model: currentModel,
+          prompt: userMessage.content,
+          useRag: ragEnabled,
+          sessionId: session.id,
+          collection: selectedCollection,
+          analysisMode: analysisMode,
+          maxRounds: maxRounds,
+          saveToRAG: saveToRAG
+        });
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError);
+        const errorMessage: ChatMessage = {
+          role: 'assistant',
+          content: `Sorry, I encountered an error while generating a response: ${fallbackError}. Please check your AI provider connections.`,
+          timestamp: new Date().toISOString()
+        };
+        const errorMessages = [...updatedMessages, errorMessage];
+        setMessages(errorMessages);
+        onSendMessage(errorMessage);
+        if (unlistenRef.current) {
+          unlistenRef.current();
+          unlistenRef.current = null;
+        }
       }
+    } finally {
+      setIsLoading(false);
     }
-  }, [inputValue, isLoading, messages, session, model, ragEnabled, onSendMessage]);
+  }, [inputValue, isLoading, messages, session, currentModel, ragEnabled, onSendMessage, multiAI, selectedCollection, analysisMode, maxRounds, saveToRAG]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
@@ -498,6 +524,41 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         )}
         
+        {/* Multi-AI Model Selector Panel */}
+        {showModelSelector && (
+          <div className="model-selector-panel">
+            <div className="model-panel-header">
+              <h3>AI Model Selection</h3>
+              <button 
+                className="close-panel-button"
+                onClick={() => setShowModelSelector(false)}
+                aria-label="Close Model Selector Panel"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18"/>
+                  <path d="M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            
+            <div className="model-panel-content">
+              <MultiAIModelSelector
+                onModelSelect={(modelId) => {
+                  multiAI.setSelectedModel(modelId);
+                  setCurrentModel(modelId);
+                  setShowModelSelector(false);
+                }}
+                selectedModel={multiAI.selectedModel}
+                onConfigChange={(config) => {
+                  // Handle configuration changes
+                  console.log('Config updated:', config);
+                }}
+                showConfiguration={true}
+              />
+            </div>
+          </div>
+        )}
+        
         {/* MCP Tools Panel */}
         {showMcpTools && (
           <div className="mcp-tools-panel">
@@ -551,6 +612,25 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         )}
         
         <div className="input-controls">
+          {/* Model Selector */}
+          <button
+            className={`control-button ${showModelSelector ? 'active' : ''}`}
+            title="Select AI Model"
+            aria-label="Select AI Model"
+            disabled={isLoading}
+            onClick={() => setShowModelSelector(!showModelSelector)}
+          >
+            <svg className="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M20 10c0-2.5-2-4.5-4.5-4.5S11 7.5 11 10s2 4.5 4.5 4.5S20 12.5 20 10z"/>
+              <path d="M4 14c0 2.5 2 4.5 4.5 4.5S13 16.5 13 14s-2-4.5-4.5-4.5S4 11.5 4 14z"/>
+            </svg>
+            {multiAI.selectedModelInfo && (
+              <span className="badge">{multiAI.selectedModelInfo.provider}</span>
+            )}
+            {showModelSelector && <span className="badge">MODELS</span>}
+          </button>
+          
           {/* Analysis Mode Selector */}
           <div className="analysis-mode-container">
             <button
