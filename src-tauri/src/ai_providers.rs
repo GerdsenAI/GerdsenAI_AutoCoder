@@ -12,7 +12,7 @@ pub enum AIProvider {
 }
 
 /// Model capability types for intelligent routing
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum ModelCapability {
     CodeGeneration,
     CodeExplanation,

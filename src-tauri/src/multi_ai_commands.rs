@@ -92,7 +92,7 @@ impl MultiAIManager {
         let mut stored_config = self.config.lock().await;
         
         // Always register Ollama provider
-        let ollama_client = OllamaClient::new("http://localhost:11434");
+        let ollama_client = OllamaClient::new(Some("http://localhost:11434".to_string()));
         let ollama_provider = OllamaProvider::new(ollama_client);
         manager.register_provider(Box::new(ollama_provider));
         

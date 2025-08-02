@@ -2,8 +2,11 @@ use crate::ai_providers::*;
 use crate::ollama_client::{OllamaClient, GenerateOptions as OllamaOptions, ModelInfo, ModelResponse};
 use async_trait::async_trait;
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tokio_stream::{Stream, StreamExt};
 use futures_util::stream;
+use async_stream;
 
 /// Ollama provider adapter
 pub struct OllamaProvider {
@@ -156,8 +159,8 @@ impl OllamaProvider {
         options.map(|opts| OllamaOptions {
             temperature: opts.temperature,
             top_p: opts.top_p,
-            top_k: opts.top_k,
-            max_tokens: opts.max_tokens,
+            top_k: opts.top_k.map(|k| k as i32),
+            max_tokens: opts.max_tokens.map(|t| t as i32),
         })
     }
 }
@@ -175,13 +178,13 @@ impl AIProviderTrait for OllamaProvider {
     async fn list_models(&self) -> Result<Vec<AIModel>, Box<dyn std::error::Error + Send + Sync>> {
         match self.client.list_models().await {
             Ok(models) => {
-                let ai_models: Vec<AIModel> = models.models
+                let ai_models: Vec<AIModel> = models
                     .iter()
                     .map(|model| self.convert_model_info(model))
                     .collect();
                 Ok(ai_models)
             }
-            Err(e) => Err(e),
+            Err(e) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))),
         }
     }
     
@@ -208,7 +211,7 @@ impl AIProviderTrait for OllamaProvider {
                     metadata,
                 })
             }
-            Err(e) => Err(e),
+            Err(e) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))),
         }
     }
     
@@ -220,35 +223,55 @@ impl AIProviderTrait for OllamaProvider {
     ) -> Result<Box<dyn Stream<Item = Result<StreamChunk, Box<dyn std::error::Error + Send + Sync>>> + Send + Unpin>, Box<dyn std::error::Error + Send + Sync>> {
         let ollama_options = Self::convert_options(options);
         
-        match self.client.generate_streaming(model_id, prompt, ollama_options).await {
-            Ok(mut ollama_stream) => {
-                let converted_stream = async_stream::stream! {
-                    while let Some(chunk_result) = ollama_stream.next().await {
-                        match chunk_result {
-                            Ok(chunk) => {
-                                let mut metadata = HashMap::new();
-                                metadata.insert("provider".to_string(), serde_json::Value::String("ollama".to_string()));
-                                
-                                // Check if this is the final chunk
-                                let is_complete = chunk.trim().is_empty() || chunk.contains("\"done\":true");
-                                
-                                yield Ok(StreamChunk {
-                                    content: chunk,
-                                    is_complete,
-                                    metadata,
-                                });
-                            }
-                            Err(e) => {
-                                yield Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>);
-                            }
-                        }
+        // Create a channel-based streaming adapter
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Result<StreamChunk, Box<dyn std::error::Error + Send + Sync>>>();
+        
+        // Clone the client and spawn the callback-based generation
+        let client = self.client.clone();
+        let model_id = model_id.to_string();
+        let prompt = prompt.to_string();
+        let tx_clone = tx.clone();
+        
+        tokio::spawn(async move {
+            let result = client.generate_stream(
+                &model_id,
+                &prompt,
+                ollama_options,
+                move |chunk: &str| {
+                    let mut metadata = HashMap::new();
+                    metadata.insert("provider".to_string(), serde_json::Value::String("ollama".to_string()));
+                    
+                    // Check if this is the final chunk  
+                    let is_complete = chunk.trim().is_empty() || chunk.contains("\"done\":true");
+                    
+                    let stream_chunk = StreamChunk {
+                        content: chunk.to_string(),
+                        is_complete,
+                        metadata,
+                    };
+                    
+                    // Send the chunk through the channel
+                    if tx_clone.send(Ok(stream_chunk)).is_err() {
+                        // Receiver dropped, stop streaming
+                        return;
                     }
-                };
-                
-                Ok(Box::new(Box::pin(converted_stream)))
+                }
+            ).await;
+            
+            // Handle any errors from the generation
+            if let Err(e) = result {
+                let _ = tx.send(Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))));
             }
-            Err(e) => Err(e),
-        }
+        });
+        
+        // Create an async stream from the receiver
+        let converted_stream = async_stream::stream! {
+            while let Some(chunk_result) = rx.recv().await {
+                yield chunk_result;
+            }
+        };
+        
+        Ok(Box::new(Box::pin(converted_stream)))
     }
     
     async fn get_model_info(&self, model_id: &str) -> Result<AIModel, Box<dyn std::error::Error + Send + Sync>> {

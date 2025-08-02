@@ -238,7 +238,7 @@ impl StreamingBuffer {
     }
 
     /// Add incoming chunk to the processing queue
-    pub fn enqueue_chunk(&mut self, chunk: Bytes) -> Result<(), Box<dyn Error>> {
+    pub fn enqueue_chunk(&mut self, chunk: Bytes) -> Result<(), Box<dyn Error + Send + Sync>> {
         if self.total_queued_bytes + chunk.len() > self.max_queue_size {
             return Err("Stream buffer queue overflow - client consuming too slowly".into());
         }
@@ -249,9 +249,9 @@ impl StreamingBuffer {
     }
 
     /// Process queued chunks and extract complete JSON lines
-    pub fn process_chunks<F>(&mut self, mut callback: F) -> Result<bool, Box<dyn Error>>
+    pub fn process_chunks<F>(&mut self, mut callback: F) -> Result<bool, Box<dyn Error + Send + Sync>>
     where
-        F: FnMut(&str) -> Result<bool, Box<dyn Error>>, // Returns true if should continue
+        F: FnMut(&str) -> Result<bool, Box<dyn Error + Send + Sync>>, // Returns true if should continue
     {
         // Process all queued chunks
         while let Some(chunk) = self.chunk_queue.pop_front() {
@@ -358,7 +358,7 @@ impl OllamaClient {
         &self.base_url
     }
 
-    pub async fn list_models(&self) -> Result<Vec<ModelInfo>, Box<dyn Error>> {
+    pub async fn list_models(&self) -> Result<Vec<ModelInfo>, Box<dyn Error + Send + Sync>> {
         let url = format!("{}/api/tags", self.base_url);
         let response = self.client.get(&url).send().await?;
         
@@ -377,7 +377,7 @@ impl OllamaClient {
         Ok(model_response.models)
     }
 
-    pub async fn get_model(&self, name: &str) -> Result<Option<ModelInfo>, Box<dyn Error>> {
+    pub async fn get_model(&self, name: &str) -> Result<Option<ModelInfo>, Box<dyn Error + Send + Sync>> {
         // Check cache first
         {
             let cache = self.models_cache.lock().await;
@@ -404,7 +404,7 @@ impl OllamaClient {
         model: &str,
         prompt: &str,
         options: Option<GenerateOptions>,
-    ) -> Result<String, Box<dyn Error>> {
+    ) -> Result<String, Box<dyn Error + Send + Sync>> {
         let url = format!("{}/api/generate", self.base_url);
         
         let request = GenerateRequest {
@@ -433,7 +433,7 @@ impl OllamaClient {
         prompt: &str,
         options: Option<GenerateOptions>,
         mut callback: F,
-    ) -> Result<(), Box<dyn Error>>
+    ) -> Result<(), Box<dyn Error + Send + Sync>>
     where
         F: FnMut(&str) + Send + 'static,
     {
@@ -492,7 +492,7 @@ impl OllamaClient {
         options: Option<GenerateOptions>,
         mut callback: F,
         mut stats_callback: Option<S>,
-    ) -> Result<(), Box<dyn Error>>
+    ) -> Result<(), Box<dyn Error + Send + Sync>>
     where
         F: FnMut(&str) + Send + 'static,
         S: FnMut(BufferStats) + Send + 'static,
@@ -564,7 +564,7 @@ impl OllamaClient {
         messages: Vec<ChatMessage>,
         options: Option<GenerateOptions>,
         mut callback: Option<F>,
-    ) -> Result<ChatMessage, Box<dyn Error>>
+    ) -> Result<ChatMessage, Box<dyn Error + Send + Sync>>
     where
         F: FnMut(&str) + Send + 'static,
     {
@@ -635,7 +635,7 @@ impl OllamaClient {
         &self,
         model: &str,
         text: &str,
-    ) -> Result<Vec<f32>, Box<dyn Error>> {
+    ) -> Result<Vec<f32>, Box<dyn Error + Send + Sync>> {
         let url = format!("{}/api/embeddings", self.base_url);
         
         let request = EmbeddingRequest {
@@ -657,7 +657,7 @@ impl OllamaClient {
     }
 
     /// Enhanced connection check with health monitoring
-    pub async fn check_connection(&self) -> Result<bool, Box<dyn Error>> {
+    pub async fn check_connection(&self) -> Result<bool, Box<dyn Error + Send + Sync>> {
         self.check_connection_with_retry().await
     }
 
@@ -699,7 +699,7 @@ impl OllamaClient {
     }
 
     /// Perform actual health check against Ollama API
-    async fn perform_health_check(&self) -> Result<bool, Box<dyn Error>> {
+    async fn perform_health_check(&self) -> Result<bool, Box<dyn Error + Send + Sync>> {
         let url = format!("{}/api/version", self.base_url);
         let timeout_duration = Duration::from_secs(self.health_monitor.config.timeout_seconds);
         
@@ -750,10 +750,10 @@ impl OllamaClient {
     }
 
     /// Execute operation with automatic retry and circuit breaker logic
-    pub async fn with_retry<F, T, E>(&self, operation: F) -> Result<T, Box<dyn Error>>
+    pub async fn with_retry<F, T, E>(&self, operation: F) -> Result<T, Box<dyn Error + Send + Sync>>
     where
         F: Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, E>> + Send>> + Send + Sync,
-        E: Into<Box<dyn Error>> + Send + Sync,
+        E: Into<Box<dyn Error + Send + Sync>> + Send + Sync,
         T: Send,
     {
         // Check if service is healthy before attempting operation
