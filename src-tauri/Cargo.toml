@@ -48,7 +48,6 @@ num_cpus = "1.16"
 rand = "0.8"
 bytes = "1.0"
 async-stream = "0.3"
-tokio-stream = "0.1"
 
 [dev-dependencies]
 mockito = "1.2"

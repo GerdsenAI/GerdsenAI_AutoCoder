@@ -23,8 +23,17 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:basic": "echo \"✅ Basic validation: package.json valid, TypeScript compilation check...\" && npm run build",
-    "test:integration": "echo \"Integration tests not yet implemented. Basic connection tests would go here.\"",
-    "test:e2e": "echo \"End-to-end tests not yet implemented. Full application workflow tests would go here.\"",
+    "test:integration": "vitest run tests/integration --reporter=json --outputFile=test-results/integration-results.json",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:all": "npm run test:run && npm run test:integration && npm run test:e2e",
+    "test:watch": "vitest --watch",
+    "test:performance": "node tests/performance/run-performance-tests.js",
+    "test:security": "npm audit --production && cd src-tauri && cargo audit",
+    "test:docker": "docker-compose -f docker-compose.test.yml up --abort-on-container-exit",
+    "test:docker:build": "docker-compose -f docker-compose.test.yml build",
+    "test:ci": "npm run test:coverage && npm run test:integration && npm run test:e2e && npm run test:security",
     "lint": "eslint src/ --ext .ts,.tsx --max-warnings 0",
     "lint:fix": "eslint src/ --ext .ts,.tsx --fix",
     "format": "prettier --write src/",
@@ -66,6 +75,11 @@
     "prettier": "^3.2.5",
     "typescript": "^5.9.2",
     "vite": "^7.0.6",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@playwright/test": "^1.40.1",
+    "@vitest/ui": "^3.2.4",
+    "mockserver-client": "^5.15.0",
+    "testcontainers": "^10.5.0",
+    "wait-on": "^7.2.0"
   }
 }
