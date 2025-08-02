@@ -1,0 +1,296 @@
+/* User Error Display Components */
+
+.user-error-display {
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  max-width: 600px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid;
+}
+
+/* Severity-based styling */
+.error-high {
+  background-color: #fef2f2;
+  border-left-color: #dc2626;
+  color: #7f1d1d;
+}
+
+.error-medium {
+  background-color: #fefbf2;
+  border-left-color: #d97706;
+  color: #92400e;
+}
+
+.error-low {
+  background-color: #f0f9ff;
+  border-left-color: #2563eb;
+  color: #1e40af;
+}
+
+/* Dark theme variants */
+@media (prefers-color-scheme: dark) {
+  .error-high {
+    background-color: #1f1414;
+    color: #fca5a5;
+  }
+  
+  .error-medium {
+    background-color: #1f1a14;
+    color: #fdba74;
+  }
+  
+  .error-low {
+    background-color: #141b2d;
+    color: #93c5fd;
+  }
+}
+
+/* Header */
+.error-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.error-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.error-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+.error-dismiss {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.error-dismiss:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Content */
+.error-content {
+  line-height: 1.5;
+}
+
+.error-message {
+  margin: 0 0 12px 0;
+  font-weight: 500;
+}
+
+.error-suggestion {
+  background-color: rgba(0, 0, 0, 0.03);
+  padding: 12px;
+  border-radius: 6px;
+  margin: 12px 0;
+}
+
+.error-suggestion h4 {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.error-suggestion p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.error-help-link {
+  margin: 12px 0;
+}
+
+.help-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.05);
+  transition: background-color 0.2s;
+}
+
+.help-link:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  text-decoration: underline;
+}
+
+/* Actions */
+.error-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.retry-button,
+.technical-details-toggle {
+  padding: 6px 12px;
+  border: 1px solid;
+  border-radius: 4px;
+  background-color: transparent;
+  color: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.retry-button {
+  border-color: currentColor;
+  font-weight: 500;
+}
+
+.retry-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.technical-details-toggle {
+  border-color: rgba(0, 0, 0, 0.2);
+  opacity: 0.8;
+}
+
+.technical-details-toggle:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+/* Technical Details */
+.technical-details {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.technical-details h4 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.technical-text {
+  background-color: rgba(0, 0, 0, 0.03);
+  padding: 8px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0 0 8px 0;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.error-code {
+  color: rgba(0, 0, 0, 0.6);
+  font-weight: 500;
+}
+
+/* Compact Banner Style */
+.user-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #fef3cd;
+  border: 1px solid #fdcf47;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #856404;
+  margin: 8px 0;
+}
+
+.error-icon-small {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.error-message-compact {
+  flex: 1;
+  font-weight: 500;
+}
+
+.error-dismiss-small {
+  background: none;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.error-dismiss-small:hover {
+  opacity: 1;
+}
+
+/* Dark theme for banner */
+@media (prefers-color-scheme: dark) {
+  .user-error-banner {
+    background-color: #2d1b11;
+    border-color: #8b5a2b;
+    color: #fdba74;
+  }
+  
+  .technical-text {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .error-code {
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .user-error-display {
+    margin: 8px 0;
+    padding: 12px;
+  }
+  
+  .error-actions {
+    flex-direction: column;
+  }
+  
+  .retry-button,
+  .technical-details-toggle {
+    width: 100%;
+  }
+}
+
+/* Animation for smooth appearance */
+.user-error-display {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

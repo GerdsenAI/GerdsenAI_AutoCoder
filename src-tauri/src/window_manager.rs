@@ -33,23 +33,23 @@ impl WindowManager {
     }
 
     pub fn register_window(&self, label: String, window: Window) {
-        let mut windows = self.windows.lock().unwrap();
-        windows.insert(label, window);
+        if let Ok(mut windows) = self.windows.lock() {
+            windows.insert(label, window);
+        }
     }
 
     pub fn get_window(&self, label: &str) -> Option<Window> {
-        let windows = self.windows.lock().unwrap();
-        windows.get(label).cloned()
+        self.windows.lock().ok()?.get(label).cloned()
     }
 
     pub fn remove_window(&self, label: &str) {
-        let mut windows = self.windows.lock().unwrap();
-        windows.remove(label);
+        if let Ok(mut windows) = self.windows.lock() {
+            windows.remove(label);
+        }
     }
 
     pub fn window_count(&self) -> usize {
-        let windows = self.windows.lock().unwrap();
-        windows.len()
+        self.windows.lock().map(|windows| windows.len()).unwrap_or(0)
     }
 }
 

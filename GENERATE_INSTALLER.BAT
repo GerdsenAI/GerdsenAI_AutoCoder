@@ -1,9 +1,9 @@
 @echo off
-REM CSE-Icon AutoCoder - Installer Generation Script
-REM Copyright (c) 2025 CSE-Icon Software. All rights reserved.
+REM GerdsenAI Socrates - Installer Generation Script
+REM Copyright (c) 2025 GerdsenAI. All rights reserved.
 
 echo ===================================================
-echo CSE-Icon AutoCoder - Installer Generation Script
+echo GerdsenAI Socrates - Installer Generation Script
 echo ===================================================
 echo.
 
@@ -104,7 +104,7 @@ echo [SUCCESS] Application built successfully.
 echo.
 
 REM Check if the installer was created
-if not exist ".\target\release\bundle\msi\CSE-Icon_AutoCoder_*.msi" (
+if not exist ".\target\release\bundle\msi\GerdsenAI_Socrates_*.msi" (
     echo [ERROR] Installer not found. Build process may have failed.
     echo.
     pause
@@ -126,8 +126,8 @@ if not exist ".\installer" (
 REM Copy installer to output directory
 echo [INFO] Copying installer to output directory...
 
-for %%f in (".\target\release\bundle\msi\CSE-Icon_AutoCoder_*.msi") do (
-    copy "%%f" ".\installer\CSE-Icon_AutoCoder_Setup.msi"
+for %%f in (".\target\release\bundle\msi\GerdsenAI_Socrates_*.msi") do (
+    copy "%%f" ".\installer\GerdsenAI_Socrates_Setup.msi"
     
     if %errorLevel% neq 0 (
         echo [ERROR] Failed to copy installer.
@@ -136,19 +136,19 @@ for %%f in (".\target\release\bundle\msi\CSE-Icon_AutoCoder_*.msi") do (
         exit /b 1
     )
     
-    echo [SUCCESS] Installer copied to .\installer\CSE-Icon_AutoCoder_Setup.msi
+    echo [SUCCESS] Installer copied to .\installer\GerdsenAI_Socrates_Setup.msi
 )
 
 REM Create README file in installer directory
 echo [INFO] Creating README file...
 
-echo CSE-Icon AutoCoder Installer> ".\installer\README.txt"
+echo GerdsenAI Socrates Installer> ".\installer\README.txt"
 echo ===========================>> ".\installer\README.txt"
 echo.>> ".\installer\README.txt"
 echo Installation Instructions:>> ".\installer\README.txt"
-echo 1. Right-click on CSE-Icon_AutoCoder_Setup.msi and select "Install">> ".\installer\README.txt"
+echo 1. Right-click on GerdsenAI_Socrates_Setup.msi and select "Install">> ".\installer\README.txt"
 echo 2. Follow the on-screen instructions to complete the installation>> ".\installer\README.txt"
-echo 3. Launch CSE-Icon AutoCoder from the Start Menu>> ".\installer\README.txt"
+echo 3. Launch GerdsenAI Socrates from the Start Menu>> ".\installer\README.txt"
 echo.>> ".\installer\README.txt"
 echo Requirements:>> ".\installer\README.txt"
 echo - Windows 11 (recommended) or Windows 10>> ".\installer\README.txt"
@@ -156,7 +156,7 @@ echo - 8GB RAM minimum>> ".\installer\README.txt"
 echo - 2GB free disk space>> ".\installer\README.txt"
 echo - Ollama installed (https://ollama.ai/download)>> ".\installer\README.txt"
 echo.>> ".\installer\README.txt"
-echo For support, please visit: https://cse-icon.com/support>> ".\installer\README.txt"
+echo For support, please visit: https://gerdsenai.com/support>> ".\installer\README.txt"
 
 echo [SUCCESS] README file created.
 echo.
@@ -168,12 +168,12 @@ where powershell >nul 2>&1
 if %errorLevel% neq 0 (
     echo [WARNING] PowerShell not found. Skipping ZIP archive creation.
 ) else (
-    powershell -Command "& {Compress-Archive -Path '.\installer\*' -DestinationPath '.\CSE-Icon_AutoCoder_Installer.zip' -Force}"
+    powershell -Command "& {Compress-Archive -Path '.\installer\*' -DestinationPath '.\GerdsenAI_Socrates_Installer.zip' -Force}"
     
     if %errorLevel% neq 0 (
         echo [WARNING] Failed to create ZIP archive. You can manually zip the installer directory.
     ) else (
-        echo [SUCCESS] ZIP archive created: CSE-Icon_AutoCoder_Installer.zip
+        echo [SUCCESS] ZIP archive created: GerdsenAI_Socrates_Installer.zip
     )
 )
 
@@ -181,8 +181,8 @@ echo.
 echo ===================================================
 echo [SUCCESS] Installer generation completed successfully!
 echo.
-echo Installer location: .\installer\CSE-Icon_AutoCoder_Setup.msi
-echo ZIP archive: .\CSE-Icon_AutoCoder_Installer.zip
+echo Installer location: .\installer\GerdsenAI_Socrates_Setup.msi
+echo ZIP archive: .\GerdsenAI_Socrates_Installer.zip
 echo.
 echo You can distribute this installer to users for easy installation.
 echo ===================================================

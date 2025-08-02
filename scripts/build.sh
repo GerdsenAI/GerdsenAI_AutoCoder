@@ -10,7 +10,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
-echo "🚀 Building Auto-Coder Companion..."
+echo "🚀 Building GerdsenAI Socrates..."
 
 # Check for required tools
 echo "🔍 Checking for required tools..."
@@ -45,7 +45,29 @@ npm run build
 
 # Build Tauri app
 echo "🔨 Building Tauri app..."
-npm run tauri build
+
+# Detect platform and build accordingly
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "🍎 macOS detected - building universal binary..."
+    
+    # Check if universal targets are installed
+    if ! rustup target list --installed | grep -q "aarch64-apple-darwin"; then
+        echo "📦 Installing Apple Silicon target..."
+        rustup target add aarch64-apple-darwin
+    fi
+    
+    if ! rustup target list --installed | grep -q "x86_64-apple-darwin"; then
+        echo "📦 Installing Intel target..."
+        rustup target add x86_64-apple-darwin
+    fi
+    
+    # Build universal binary
+    npm run tauri:build:macos
+    echo "✅ Universal macOS binary created (supports Apple Silicon + Intel)"
+else
+    echo "🖥️ Non-macOS platform detected - building standard binary..."
+    npm run tauri build
+fi
 
 # Build LSP server
 echo "🔨 Building LSP server..."
@@ -74,6 +96,14 @@ fi
 
 echo "✅ Build completed successfully!"
 echo "📁 Output files can be found in:"
-echo "  - Tauri app: $PROJECT_ROOT/src-tauri/target/release"
-echo "  - VS Code extension: $PROJECT_ROOT/extensions/vscode/auto-coder-companion.vsix"
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "  - macOS App Bundle: $PROJECT_ROOT/src-tauri/target/universal-apple-darwin/release/bundle/macos/"
+    echo "  - macOS DMG Installer: $PROJECT_ROOT/src-tauri/target/universal-apple-darwin/release/bundle/dmg/"
+else
+    echo "  - Tauri app: $PROJECT_ROOT/src-tauri/target/release"
+fi
+
+echo "  - LSP Server: $PROJECT_ROOT/src-tauri/target/release/auto-coder-lsp"
+echo "  - VS Code extension: $PROJECT_ROOT/extensions/vscode/gerdsenai-socrates.vsix"
 echo "  - Visual Studio extension: $PROJECT_ROOT/extensions/visual-studio/AutoCoderExtension/bin/Release"

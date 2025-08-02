@@ -1,16 +1,22 @@
-# CSE-Icon AutoCoder
+# GerdsenAI Socrates
 
 ## WIP...
 
-![CSE-Icon AutoCoder](./public/assets/cse-icon-logo.png)
+![GerdsenAI Socrates](./public/assets/gerdsenai/s-logo.png)
 
 ## Features
 
-### **🤖 AI-Powered Chat & Analysis**
-- **Advanced Chat Interface**: Real-time conversation with local and network Ollama models
+### **🤖 Multi-AI Provider Support**
+- **Multi-Provider Integration**: Seamlessly switch between OpenAI GPT, Anthropic Claude, and Ollama models
+- **Smart Model Routing**: Automatic model selection based on task capabilities (coding, debugging, analysis)
+- **Advanced Chat Interface**: Real-time conversation with intelligent provider fallback
+- **Cost & Performance Tracking**: Monitor token usage, costs, and model performance in real-time
+
+### **🧠 AI-Enhanced Development**
 - **AI Code Analysis**: Intelligent error detection, suggestions, and fixes via LSP integration
 - **Smart Completions**: Context-aware code completions with AI-powered suggestions
 - **Intelligent Hover**: AI explanations for code elements and functions
+- **Model Comparison**: Compare performance across different AI providers for optimal results
 
 ### **🔍 Web Search & Knowledge**
 - **SearXNG Integration**: Built-in web search with health monitoring and Docker setup
@@ -28,6 +34,18 @@
 - **Model Selection**: Dynamic switching between local and network Ollama models
 - **Performance Optimized**: Debounced analysis, response caching, background processing
 - **Multi-language Support**: JavaScript, TypeScript, Rust, Python, and more
+
+### **🧠 Advanced AI Features**
+- **Deep Analysis Mode**: Socratic questioning engine for complex problem-solving
+- **Systematic Analysis**: PDCA/OODA loop approach for structured debugging
+- **Learning System**: Auto-saves successful reasoning patterns to RAG for continuous improvement
+- **Smart Triggers**: Automatically detects complex problems and suggests deep analysis
+
+### **🔧 Extensible Architecture**
+- **MCP Integration**: Model Context Protocol support for user-configurable extensions
+- **Popular Tools**: Quick-add gallery for GitHub, Filesystem, Sequential Thinking, Brave Search
+- **Custom Servers**: Support for any MCP-compatible tool or service
+- **Core Services**: Built-in Ollama, SearXNG, ChromaDB, and LSP remain stable
 
 ### **🎨 User Experience**
 - **Professional UI**: Modern dark theme with smooth animations and real-time feedback
@@ -63,6 +81,17 @@
 
 For detailed setup instructions, see [WINDOWS_SETUP.md](./WINDOWS_SETUP.md).
 
+## Development Philosophy
+
+This project follows an **Inquiry-Based Learning** approach to development:
+
+- **Question First**: Understand the 'why' before the 'how'
+- **Challenge Assumptions**: Verify what we think we know
+- **Explore Alternatives**: Consider multiple solutions
+- **Learn Continuously**: Every bug is a learning opportunity
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
+
 ## Development
 
 ### Prerequisites
@@ -84,10 +113,40 @@ npm run tauri dev
 # Build for production
 npm run tauri build
 
+# Run tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
 # Generate installer
 ./GENERATE_INSTALLER.BAT
 ```
 
+## Testing
+
+GerdsenAI Socrates includes comprehensive production-ready testing infrastructure:
+
+### Frontend Tests
+- **24/24 tests passing** for ChatInterface component (100% coverage)
+- Full Tauri command mocking and deterministic results
+- Complete user workflow testing including streaming responses and error handling
+
+### Backend Tests  
+- **70+ comprehensive Rust tests** across critical modules
+- HTTP mocking with mockito for external API calls
+- Concurrency, performance, and edge case testing
+- Memory bounds and resource constraint validation
+
+Run the test suite:
+```bash
+# Frontend tests
+npm test
+
+# Backend tests (requires Rust/Cargo)
+cd src-tauri && cargo test
+```
+
 ## License
 
-Copyright © 2025 CSE-Icon Software. All rights reserved.
+Copyright © 2025 GerdsenAI. All rights reserved.

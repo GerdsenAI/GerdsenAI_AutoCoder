@@ -1,12 +1,12 @@
 @echo off
 echo Script execution started. Press any key to see the title...
 pause
-REM CSE-Icon AutoCoder Windows 11 Setup Script
+REM GerdsenAI Socrates Windows 11 Setup Script
 
-REM Copyright (c) 2025 CSE-Icon Software. All rights reserved.
+REM Copyright (c) 2025 GerdsenAI. All rights reserved.
 
 echo ===================================================
-echo CSE-Icon AutoCoder - Windows 11 Setup Script
+echo GerdsenAI Socrates - Windows 11 Setup Script
 echo ===================================================
 echo.
 
@@ -110,7 +110,7 @@ if %errorLevel% neq 0 (
 )
 
 REM Navigate to the application directory for npm commands
-pushd "%~dp0..\CSE-Icon_AutoCoder"
+pushd "%~dp0..\GerdsenAI_Socrates"
 if %errorLevel% neq 0 (
     echo Error: Could not navigate to the application directory.
     echo Please ensure the script is in the correct location relative to the AutoCoder folder.
@@ -182,7 +182,7 @@ if %errorLevel% neq 0 (
 )
 
 REM Build the application
-echo Building CSE-Icon AutoCoder...
+echo Building GerdsenAI Socrates...
 call npm run tauri build
 if %errorLevel% neq 0 (
     echo Error: Failed to build the application.
@@ -199,8 +199,8 @@ popd
 
 REM Create shortcuts
 echo Creating shortcuts...
-powershell -Command "& {$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut([Environment]::GetFolderPath('Desktop') + '\CSE-Icon AutoCoder.lnk'); $Shortcut.TargetPath = '%~dp0..\CSE-Icon_AutoCoder\src-tauri\target\release\CSE-Icon_AutoCoder.exe'; $Shortcut.Save()}"
-powershell -Command "& {$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut([Environment]::GetFolderPath('StartMenu') + '\Programs\CSE-Icon AutoCoder.lnk'); $Shortcut.TargetPath = '%~dp0..\CSE-Icon_AutoCoder\src-tauri\target\release\CSE-Icon_AutoCoder.exe'; $Shortcut.Save()}"
+powershell -Command "& {$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut([Environment]::GetFolderPath('Desktop') + '\GerdsenAI Socrates.lnk'); $Shortcut.TargetPath = '%~dp0..\GerdsenAI_Socrates\src-tauri\target\release\GerdsenAI_Socrates.exe'; $Shortcut.Save()}"
+powershell -Command "& {$WshShell = New-Object -ComObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut([Environment]::GetFolderPath('StartMenu') + '\Programs\GerdsenAI Socrates.lnk'); $Shortcut.TargetPath = '%~dp0..\GerdsenAI_Socrates\src-tauri\target\release\GerdsenAI_Socrates.exe'; $Shortcut.Save()}"
 echo Shortcuts created successfully.
 echo.
 
@@ -213,13 +213,13 @@ if %errorLevel% equ 0 (
     echo Visual Studio Code detected. Configuring integration...
     
     REM Create VS Code extension directory if it doesn't exist
-    if not exist "%USERPROFILE%\.vscode\extensions\cse-icon-autocoder" (
-        mkdir "%USERPROFILE%\.vscode\extensions\cse-icon-autocoder"
+    if not exist "%USERPROFILE%\.vscode\extensions\gerdsenai-socrates" (
+        mkdir "%USERPROFILE%\.vscode\extensions\gerdsenai-socrates"
     )
     
     REM Copy necessary files for VS Code integration
     if exist "%~dp0vscode-integration\*" (
-        xcopy /E /I /Y "%~dp0vscode-integration\*" "%USERPROFILE%\.vscode\extensions\cse-icon-autocoder"
+        xcopy /E /I /Y "%~dp0vscode-integration\*" "%USERPROFILE%\.vscode\extensions\gerdsenai-socrates"
         echo VS Code integration configured successfully.
     ) else (
         echo VS Code integration files not found. Skipping...
@@ -233,13 +233,13 @@ if %errorLevel% equ 0 (
     echo Visual Studio detected. Configuring integration...
     
     REM Create Visual Studio extension directory if it doesn't exist
-    if not exist "%USERPROFILE%\Documents\Visual Studio 2022\Extensions\CSE-Icon AutoCoder" (
-        mkdir "%USERPROFILE%\Documents\Visual Studio 2022\Extensions\CSE-Icon AutoCoder"
+    if not exist "%USERPROFILE%\Documents\Visual Studio 2022\Extensions\GerdsenAI Socrates" (
+        mkdir "%USERPROFILE%\Documents\Visual Studio 2022\Extensions\GerdsenAI Socrates"
     )
     
     REM Copy necessary files for Visual Studio integration
     if exist "%~dp0vs-integration\*" (
-        xcopy /E /I /Y "%~dp0vs-integration\*" "%USERPROFILE%\Documents\Visual Studio 2022\Extensions\CSE-Icon AutoCoder"
+        xcopy /E /I /Y "%~dp0vs-integration\*" "%USERPROFILE%\Documents\Visual Studio 2022\Extensions\GerdsenAI Socrates"
         echo Visual Studio integration configured successfully.
     ) else (
         echo Visual Studio integration files not found. Skipping...
@@ -248,7 +248,7 @@ if %errorLevel% equ 0 (
 )
 
 echo ===================================================
-echo CSE-Icon AutoCoder setup completed successfully!
+echo GerdsenAI Socrates setup completed successfully!
 echo.
 echo You can now launch the application from:
 echo  - Desktop shortcut

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Analysis Mode - UI Mockup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+        }
+
+        /* Analysis Mode Toggle */
+        .analysis-toggle {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .analysis-toggle.active {
+            border-color: #8b5cf6;
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .toggle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .toggle-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .toggle-icon {
+            width: 24px;
+            height: 24px;
+            background: #8b5cf6;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .switch {
+            width: 48px;
+            height: 24px;
+            background: #30363d;
+            border-radius: 12px;
+            position: relative;
+            transition: background 0.3s ease;
+        }
+
+        .switch.active {
+            background: #8b5cf6;
+        }
+
+        .switch-ball {
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s ease;
+        }
+
+        .switch.active .switch-ball {
+            transform: translateX(24px);
+        }
+
+        /* Mode Selection */
+        .mode-selection {
+            display: none;
+            margin-top: 16px;
+            gap: 8px;
+        }
+
+        .mode-selection.visible {
+            display: flex;
+        }
+
+        .mode-option {
+            flex: 1;
+            padding: 12px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .mode-option:hover {
+            border-color: #58a6ff;
+        }
+
+        .mode-option.selected {
+            background: #8b5cf6;
+            border-color: #8b5cf6;
+            color: white;
+        }
+
+        .mode-label {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .mode-desc {
+            font-size: 12px;
+            color: #8b949e;
+        }
+
+        .mode-option.selected .mode-desc {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Progress Indicator */
+        .analysis-progress {
+            display: none;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .analysis-progress.visible {
+            display: block;
+        }
+
+        .progress-header {
+            font-size: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .round-indicators {
+            display: flex;
+            gap: 8px;
+        }
+
+        .round-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #30363d;
+            transition: all 0.3s ease;
+        }
+
+        .round-dot.active {
+            background: #8b5cf6;
+            transform: scale(1.5);
+        }
+
+        .round-dot.completed {
+            background: #10b981;
+        }
+
+        .time-elapsed {
+            font-size: 12px;
+            color: #8b949e;
+        }
+
+        /* Chat Example */
+        .chat-example {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #0d1117;
+        }
+
+        .message.bot {
+            border-left: 3px solid #8b5cf6;
+        }
+
+        .message.user {
+            border-left: 3px solid #58a6ff;
+        }
+
+        .message-label {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+
+        .message-content {
+            font-size: 14px;
+        }
+
+        .question-tag {
+            display: inline-block;
+            background: #8b5cf6;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+
+        /* Exit Button */
+        .exit-analysis {
+            display: none;
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid #f85149;
+            color: #f85149;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .exit-analysis.visible {
+            display: inline-block;
+        }
+
+        .exit-analysis:hover {
+            background: #f85149;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 style="margin-bottom: 24px; color: #f0f6fc;">Deep Analysis Mode Mockup</h2>
+        
+        <!-- Analysis Toggle -->
+        <div class="analysis-toggle" id="analysisToggle">
+            <div class="toggle-header">
+                <div class="toggle-title">
+                    <div class="toggle-icon">?</div>
+                    <span>Deep Analysis Mode</span>
+                </div>
+                <div class="toggle-switch" onclick="toggleAnalysis()">
+                    <div class="switch" id="toggleSwitch">
+                        <div class="switch-ball"></div>
+                    </div>
+                    <span id="toggleLabel">Off</span>
+                </div>
+            </div>
+            
+            <div class="mode-selection" id="modeSelection">
+                <div class="mode-option" onclick="selectMode('socratic')">
+                    <div class="mode-label">Socratic</div>
+                    <div class="mode-desc">Question-driven discovery</div>
+                </div>
+                <div class="mode-option" onclick="selectMode('systematic')">
+                    <div class="mode-label">Systematic</div>
+                    <div class="mode-desc">PDCA/OODA methodology</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Indicator -->
+        <div class="analysis-progress" id="progressIndicator">
+            <div class="progress-header">
+                <div>
+                    <strong>Socratic Analysis</strong> - Round <span id="currentRound">1</span> of 5
+                </div>
+                <div class="time-elapsed">2m 34s</div>
+            </div>
+            <div class="round-indicators">
+                <div class="round-dot completed"></div>
+                <div class="round-dot active"></div>
+                <div class="round-dot"></div>
+                <div class="round-dot"></div>
+                <div class="round-dot"></div>
+            </div>
+            <button class="exit-analysis visible" onclick="exitAnalysis()">Exit Deep Analysis</button>
+        </div>
+
+        <!-- Chat Example -->
+        <div class="chat-example">
+            <div class="message user">
+                <div class="message-label">You</div>
+                <div class="message-content">My app crashes when loading user data</div>
+            </div>
+            
+            <div class="message bot">
+                <div class="message-label">AutoCoder (Socratic Mode)</div>
+                <div class="message-content">
+                    <span class="question-tag">Q1</span>When exactly does the crash occur - during the data fetch, parsing, or rendering phase?
+                </div>
+            </div>
+            
+            <div class="message user">
+                <div class="message-label">You</div>
+                <div class="message-content">During parsing, I see "JSON.parse error" in console</div>
+            </div>
+            
+            <div class="message bot">
+                <div class="message-label">AutoCoder (Socratic Mode)</div>
+                <div class="message-content">
+                    <span class="question-tag">Q2</span>What assumptions are we making about the data format? Have you verified the API is actually returning JSON and not an error page or different format?
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let analysisActive = false;
+        let selectedMode = null;
+
+        function toggleAnalysis() {
+            analysisActive = !analysisActive;
+            const toggle = document.getElementById('analysisToggle');
+            const switchEl = document.getElementById('toggleSwitch');
+            const label = document.getElementById('toggleLabel');
+            const modeSelection = document.getElementById('modeSelection');
+            const progress = document.getElementById('progressIndicator');
+            
+            if (analysisActive) {
+                toggle.classList.add('active');
+                switchEl.classList.add('active');
+                label.textContent = 'On';
+                modeSelection.classList.add('visible');
+            } else {
+                toggle.classList.remove('active');
+                switchEl.classList.remove('active');
+                label.textContent = 'Off';
+                modeSelection.classList.remove('visible');
+                progress.classList.remove('visible');
+                // Reset selection
+                document.querySelectorAll('.mode-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                selectedMode = null;
+            }
+        }
+
+        function selectMode(mode) {
+            selectedMode = mode;
+            document.querySelectorAll('.mode-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            event.target.closest('.mode-option').classList.add('selected');
+            
+            // Show progress indicator
+            setTimeout(() => {
+                document.getElementById('progressIndicator').classList.add('visible');
+            }, 300);
+        }
+
+        function exitAnalysis() {
+            if (confirm('Exit deep analysis mode? Current analysis progress will be saved to knowledge base.')) {
+                toggleAnalysis();
+            }
+        }
+    </script>
+</body>
+</html>

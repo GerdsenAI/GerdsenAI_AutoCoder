@@ -1,8 +1,8 @@
-# CSE-Icon AutoCoder Holistic Optimization Plan
+# GerdsenAI Socrates Holistic Optimization Plan
 
 ## Overview
 
-This document outlines a comprehensive optimization plan for the CSE-Icon AutoCoder project, ensuring it becomes a production-ready application for Windows 11 while preserving all enhanced features. The plan addresses dependency updates, code refactoring, integration points, and testing requirements.
+This document outlines a comprehensive optimization plan for the GerdsenAI Socrates project, ensuring it becomes a production-ready application for Windows 11 while preserving all enhanced features. The plan addresses dependency updates, code refactoring, integration points, and testing requirements.
 
 ## 1. Dependency Updates
 
@@ -70,7 +70,7 @@ This document outlines a comprehensive optimization plan for the CSE-Icon AutoCo
 - Implement proper cleanup with AbortController
 
 ### UI/UX Enhancements
-- Integrate cse-icon-logo.png in place of robot icon
+- Integrate GerdsenAI Socrates logo assets in place of robot icon
 - Ensure consistent styling across components
 - Implement responsive design for all screen sizes
 - Add loading states and error feedback
@@ -123,6 +123,26 @@ This document outlines a comprehensive optimization plan for the CSE-Icon AutoCo
 - Implement persistent chat history
 - Test context storage
 - Verify retrieval and continuation
+
+### Context Window Management
+- **Pragmatic Implementation Approach**
+  - Start with MVP: Simple sliding window + RAG
+  - Visual token budget management (see mockups/context-window-visualizer.html)
+  - User control over file inclusion/exclusion
+  - Transparent relevance scoring
+  
+- **Phased Rollout**
+  - Phase 1: Basic token counting and visualization
+  - Phase 2: Smart truncation and summarization
+  - Phase 3: User presets and advanced controls
+  - Phase 4: Performance optimization based on real usage
+  
+- **Key Features**
+  - Real-time token budget visualization
+  - Manual file pinning capabilities
+  - Context presets for common tasks
+  - Relevance score transparency
+  - Memory-efficient implementation
 
 ## 4. Windows 11 Compatibility
 
@@ -198,4 +218,4 @@ This document outlines a comprehensive optimization plan for the CSE-Icon AutoCo
 
 ## Conclusion
 
-This holistic optimization plan provides a comprehensive roadmap for transforming the CSE-Icon AutoCoder project into a production-ready application for Windows 11. By following this plan, we will ensure that all enhanced features are preserved while leveraging the latest technologies and best practices.
+This holistic optimization plan provides a comprehensive roadmap for transforming the GerdsenAI Socrates project into a production-ready application for Windows 11. By following this plan, we will ensure that all enhanced features are preserved while leveraging the latest technologies and best practices.

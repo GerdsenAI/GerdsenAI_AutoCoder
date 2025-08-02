@@ -5,6 +5,12 @@ mod searxng_commands;
 mod chroma_manager;
 mod lsp_server;
 mod code_analysis;
+mod context_manager;
+mod analysis_engine;
+mod mcp_manager;
+mod mcp_commands;
+mod thread_pool_manager;
+mod user_errors;
 // mod doc_scraper;
 // mod window_manager;
 mod history_manager;
@@ -16,21 +22,24 @@ use ollama_client::{OllamaClient, SharedOllamaClient};
 use searxng_client::SearXNGClient;
 use chroma_manager::ChromaManager;
 use code_analysis::CodeAnalysisService;
+use context_manager::ContextManager;
+use mcp_manager::MCPManager;
+use thread_pool_manager::ThreadPoolManager;
 use history_manager::{HistoryManager, SharedHistoryManager};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[cfg(debug_assertions)]
 const LOG_TARGETS: [&str; 9] = [
-    "auto_coder_companion::commands",
-    "auto_coder_companion::ollama_client",
-    "auto_coder_companion::searxng_client",
-    "auto_coder_companion::chroma_manager",
-    "auto_coder_companion::lsp_server",
-    "auto_coder_companion::code_analysis",
-    "auto_coder_companion::doc_scraper",
-    "auto_coder_companion::window_manager",
-    "auto_coder_companion::history_manager",
+    "gerdsenai_socrates::commands",
+    "gerdsenai_socrates::ollama_client",
+    "gerdsenai_socrates::searxng_client",
+    "gerdsenai_socrates::chroma_manager",
+    "gerdsenai_socrates::lsp_server",
+    "gerdsenai_socrates::code_analysis",
+    "gerdsenai_socrates::doc_scraper",
+    "gerdsenai_socrates::window_manager",
+    "gerdsenai_socrates::history_manager",
 ];
 
 fn main() {
@@ -50,7 +59,7 @@ fn main() {
     }
     
     // Temporarily disable menu for focus on ChromaDB implementation
-    // TODO: Reimplement menu using Tauri 2.0 API later
+    // Note: Menu implementation will be added using Tauri 2.0 API in future releases
     // Initialize ChromaManager with proper error handling
     let chroma_manager = ChromaManager::new("./chroma_db")
         .map_err(|e| format!("Failed to initialize ChromaDB: {}", e))
@@ -63,6 +72,15 @@ fn main() {
     // Initialize CodeAnalysisService with shared Ollama client
     let code_analysis_service = Arc::new(CodeAnalysisService::new(shared_ollama_client.clone()));
 
+    // Initialize ContextManager with default settings (128k tokens, 25k reserved)
+    let context_manager = ContextManager::default();
+    
+    // Initialize MCPManager for Model Context Protocol extensions
+    let mcp_manager = MCPManager::new();
+    
+    // Initialize ThreadPoolManager for CPU-intensive tasks
+    let thread_pool_manager = ThreadPoolManager::new();
+
     tauri::Builder::default()
         // .manage(WindowManager::new())
         .manage(ollama_client)
@@ -70,6 +88,9 @@ fn main() {
         .manage(SearXNGClient::new(None))
         .manage(Mutex::new(chroma_manager))
         .manage(code_analysis_service)
+        .manage(context_manager)
+        .manage(mcp_manager)
+        .manage(thread_pool_manager)
         .setup(|app| {
             // Initialize HistoryManager
             let history_manager = HistoryManager::new(&app.handle())
@@ -91,6 +112,14 @@ fn main() {
             searxng_commands::get_available_engines,
             searxng_commands::set_default_engines,
             searxng_commands::get_available_categories,
+            // SearXNG health monitoring commands
+            searxng_commands::get_searxng_health_stats,
+            searxng_commands::check_searxng_health,
+            searxng_commands::check_searxng_degraded,
+            searxng_commands::start_searxng_health_monitoring,
+            searxng_commands::stop_searxng_health_monitoring,
+            searxng_commands::check_searxng_connection_detailed,
+            searxng_commands::search_web_with_fallback,
             chroma_manager::list_chroma_collections,
             chroma_manager::create_chroma_collection,
             chroma_manager::delete_chroma_collection,
@@ -99,6 +128,19 @@ fn main() {
             chroma_manager::get_documents_from_chroma,
             chroma_manager::delete_documents_from_chroma,
             chroma_manager::get_collection_count,
+            chroma_manager::get_rag_cache_stats,
+            chroma_manager::clear_rag_cache,
+            chroma_manager::invalidate_collection_cache,
+            chroma_manager::get_batch_processing_stats,
+            chroma_manager::is_batch_processing_enabled,
+            // ChromaDB health monitoring commands
+            chroma_manager::get_chroma_health_stats,
+            chroma_manager::check_chroma_health,
+            chroma_manager::validate_chroma_connection,
+            chroma_manager::check_chroma_connection_with_retry,
+            chroma_manager::start_chroma_health_monitoring,
+            chroma_manager::stop_chroma_health_monitoring,
+            chroma_manager::check_chroma_connection_detailed,
             lsp_server::initialize_lsp_server,
             lsp_server::shutdown_lsp_server,
             lsp_server::lsp_open_document,
@@ -113,6 +155,16 @@ fn main() {
             code_analysis::analyze_repository,
             code_analysis::fix_code,
             code_analysis::generate_code,
+            code_analysis::analyze_dependencies,
+            code_analysis::analyze_impact,
+            code_analysis::suggest_refactorings,
+            context_manager::get_context_budget,
+            context_manager::pin_file,
+            context_manager::unpin_file,
+            context_manager::calculate_file_relevance,
+            context_manager::build_context,
+            context_manager::get_pinned_files,
+            context_manager::count_file_tokens,
             // doc_scraper::scrape_documentation,
             // doc_scraper::batch_scrape_documentation,
             // doc_scraper::search_documentation,
@@ -121,12 +173,28 @@ fn main() {
             // window_manager::close_window,
             // window_manager::dock_window,
             // window_manager::undock_window,
+            mcp_commands::list_mcp_servers,
+            mcp_commands::add_mcp_server,
+            mcp_commands::remove_mcp_server,
+            mcp_commands::toggle_mcp_server,
+            mcp_commands::test_mcp_connection,
+            mcp_commands::connect_mcp_server,
+            mcp_commands::disconnect_mcp_server,
+            mcp_commands::list_mcp_tools,
+            mcp_commands::call_mcp_tool,
+            mcp_commands::auto_connect_mcp_servers,
             history_manager::list_chat_sessions,
             history_manager::get_chat_session,
             history_manager::create_chat_session,
             history_manager::update_chat_session,
             history_manager::delete_chat_session,
             history_manager::add_chat_message,
+            // Health monitoring commands
+            commands::get_ollama_health_stats,
+            commands::check_ollama_health,
+            commands::start_ollama_health_monitoring,
+            commands::stop_ollama_health_monitoring,
+            commands::check_ollama_connection_detailed,
             // file_watcher::watch_repository,
             // file_watcher::unwatch_repository,
             // file_watcher::list_files,
@@ -135,7 +203,7 @@ fn main() {
         ])
         // .menu(menu) // Disabled for now
         .run(tauri::generate_context!())
-        .expect("Error while running Auto-Coder Companion");
+        .expect("Error while running GerdsenAI Socrates");
 }
 
 // fn create_new_window(app_handle: AppHandle) {
@@ -148,7 +216,7 @@ fn main() {
 //         window_id.clone(),
 //         WindowUrl::App("index.html".into())
 //     )
-//     .title("Auto-Coder Companion")
+//     .title("GerdsenAI Socrates")
 //     .inner_size(800.0, 600.0)
 //     .build()
 //     .unwrap();

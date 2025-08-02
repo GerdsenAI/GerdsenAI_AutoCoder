@@ -1,0 +1,12 @@
+node_modules/
+dist/
+src-tauri/target/
+coverage/
+*.log
+*.lock
+package-lock.json
+.next/
+.nuxt/
+.vuepress/dist/
+.serverless/
+.git/
