@@ -386,3 +386,57 @@ Cross-platform build system supports:
 - **Ollama**: Must be running for AI chat functionality
 - **SearXNG**: Optional for web search features
 - **ChromaDB**: Required for RAG document storage and retrieval
+
+## Current Development Focus
+
+### Rust Code Quality (feature/rust-cleanup branch)
+We are currently addressing 143 Rust warnings to ensure production-ready code quality:
+
+#### Common Warning Categories
+1. **Unused Imports**: Remove imports that are no longer needed
+2. **Redundant Clone Calls**: Fix `.clone()` on references that don't implement `Clone`
+3. **Dead Code**: Remove or properly use unused functions and variables
+4. **Missing Trait Implementations**: Add `#[derive(Clone)]` where needed
+
+#### Rust Best Practices
+- Run `cargo clippy` for additional linting beyond `cargo check`
+- Use `cargo fix` to automatically fix simple warnings
+- Always run tests after fixing warnings: `cargo test`
+- Keep warnings at zero for production code
+
+#### Quick Commands
+```bash
+# Check for warnings
+cargo check 2>&1 | grep -E "warning:" | wc -l
+
+# Apply automatic fixes
+cargo fix --allow-dirty
+
+# Run clippy for additional checks
+cargo clippy -- -W clippy::all
+
+# Format code
+cargo fmt
+```
+
+## Code Quality Standards
+
+### Zero Warning Policy
+- **Production code must have zero warnings** - All warnings indicate potential issues
+- **Fix warnings immediately** - Don't let them accumulate
+- **Use automated tools** - `cargo fix`, `cargo clippy`, `cargo fmt`
+- **Test after fixes** - Ensure no regressions from warning fixes
+
+### When Working on Rust Code
+1. Always run `cargo check` before committing
+2. Address all warnings, not just errors
+3. Use `cargo clippy` for additional quality checks
+4. Format with `cargo fmt` for consistency
+5. Run tests to verify fixes don't break functionality
+
+### Inquiry-Based Approach to Warning Resolution
+When encountering warnings, ask:
+- **Why does this warning exist?** - Understand the underlying issue
+- **Is this dead code or a missing implementation?** - Determine the root cause
+- **What's the safest fix?** - Choose solutions that maintain functionality
+- **Could this indicate a larger design issue?** - Look for patterns in warnings

@@ -96,10 +96,10 @@ export default defineConfig({
   },
 
   /* Global setup */
-  globalSetup: require.resolve('./tests/e2e/global-setup.ts'),
+  globalSetup: './tests/e2e/global-setup.ts',
   
   /* Global teardown */
-  globalTeardown: require.resolve('./tests/e2e/global-teardown.ts'),
+  globalTeardown: './tests/e2e/global-teardown.ts',
   
   /* Maximum time one test can run for */
   timeout: 30 * 1000,
