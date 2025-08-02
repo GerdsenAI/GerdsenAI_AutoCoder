@@ -4,13 +4,14 @@ use reqwest::{Client, header::HeaderMap};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio_stream::{Stream, StreamExt};
-use futures_util::stream;
 
 /// Anthropic Claude API client
 pub struct AnthropicClient {
     client: Client,
+    #[allow(dead_code)]
     api_key: String,
     base_url: String,
+    #[allow(dead_code)]
     model_cache: HashMap<String, AIModel>,
     enabled: bool,
 }
@@ -41,6 +42,7 @@ struct AnthropicMessage {
 
 /// Anthropic API response format
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct AnthropicResponse {
     id: String,
     #[serde(rename = "type")]
@@ -54,6 +56,7 @@ struct AnthropicResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct AnthropicContent {
     #[serde(rename = "type")]
     content_type: String,
@@ -76,6 +79,7 @@ struct AnthropicStreamResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct AnthropicDelta {
     #[serde(rename = "type")]
     delta_type: String,
@@ -141,6 +145,7 @@ impl AnthropicClient {
     }
     
     /// Get context length for model
+    #[allow(dead_code)]
     fn get_context_length(model_name: &str) -> u32 {
         match model_name {
             name if name.starts_with("claude-3") => 200000,

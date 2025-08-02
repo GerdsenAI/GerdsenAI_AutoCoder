@@ -1,11 +1,8 @@
 use crate::ai_providers::*;
-use crate::ollama_client::{OllamaClient, GenerateOptions as OllamaOptions, ModelInfo, ModelResponse};
+use crate::ollama_client::{OllamaClient, GenerateOptions as OllamaOptions, ModelInfo};
 use async_trait::async_trait;
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 use tokio_stream::{Stream, StreamExt};
-use futures_util::stream;
 use async_stream;
 
 /// Ollama provider adapter

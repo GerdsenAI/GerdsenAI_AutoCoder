@@ -4,13 +4,14 @@ use reqwest::{Client, header::HeaderMap};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio_stream::{Stream, StreamExt};
-use futures_util::stream;
 
 /// OpenAI API client
 pub struct OpenAIClient {
     client: Client,
+    #[allow(dead_code)]
     api_key: String,
     base_url: String,
+    #[allow(dead_code)]
     model_cache: HashMap<String, AIModel>,
     enabled: bool,
 }
@@ -40,6 +41,7 @@ struct OpenAIMessage {
 
 /// OpenAI API response format
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct OpenAIResponse {
     id: String,
     object: String,
@@ -50,6 +52,7 @@ struct OpenAIResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct OpenAIChoice {
     index: u32,
     message: Option<OpenAIMessage>,
@@ -58,6 +61,7 @@ struct OpenAIChoice {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct OpenAIDelta {
     content: Option<String>,
     role: Option<String>,
@@ -72,6 +76,7 @@ struct OpenAIUsage {
 
 /// OpenAI Models API response
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct OpenAIModelsResponse {
     object: String,
     data: Vec<OpenAIModelInfo>,
