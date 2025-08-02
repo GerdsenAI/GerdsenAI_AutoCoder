@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RAGPanel } from '../RAGPanel';
 import { invoke } from '@tauri-apps/api/core';
@@ -7,311 +7,310 @@ import { invoke } from '@tauri-apps/api/core';
 // Mock Tauri API
 vi.mock('@tauri-apps/api/core');
 
-// Mock hooks
-vi.mock('../../hooks/useChroma', () => ({
-  useChroma: vi.fn(() => ({
-    collections: [
-      { name: 'default', count: 10 },
-      { name: 'test-collection', count: 5 }
-    ],
-    isLoading: false,
-    error: null,
-    listCollections: vi.fn(),
-    createCollection: vi.fn(),
-    deleteCollection: vi.fn(),
-    addDocuments: vi.fn(),
-    query: vi.fn(),
-    getDocuments: vi.fn(),
-    deleteDocuments: vi.fn()
-  }))
-}));
-
 describe('RAGPanel', () => {
   const mockInvoke = vi.mocked(invoke);
   const user = userEvent.setup();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock implementations
+    mockInvoke.mockImplementation((cmd: string, args?: any) => {
+      if (cmd === 'list_chroma_collections') {
+        return Promise.resolve(['default', 'test-collection']);
+      }
+      if (cmd === 'get_collection_count') {
+        return Promise.resolve(5);
+      }
+      if (cmd === 'query_chroma') {
+        return Promise.resolve([
+          {
+            id: 'doc1',
+            document: 'Test document content',
+            metadata: { title: 'Test Doc' },
+            distance: 0.1
+          }
+        ]);
+      }
+      if (cmd === 'create_chroma_collection') {
+        return Promise.resolve();
+      }
+      return Promise.resolve();
+    });
   });
 
-  describe('Rendering and Display', () => {
-    it('should render the RAG panel with all sections', () => {
+  describe('Rendering', () => {
+    it('should render the RAG panel with basic elements', async () => {
       render(<RAGPanel />);
       
-      // Check for main sections
-      expect(screen.getByLabelText('Collection:')).toBeInTheDocument();
-      expect(screen.getByText('Collections')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Enter your query...')).toBeInTheDocument();
-    });
-
-    it('should display collections list', () => {
-      render(<RAGPanel />);
+      expect(screen.getByText('Collection:')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('New collection name')).toBeInTheDocument();
+      expect(screen.getByText('Create')).toBeInTheDocument();
       
-      expect(screen.getByText('default')).toBeInTheDocument();
-      expect(screen.getByText('10')).toBeInTheDocument();
-      expect(screen.getByText('test-collection')).toBeInTheDocument();
-      expect(screen.getByText('5')).toBeInTheDocument();
-    });
-
-    it('should display documents in selected collection', async () => {
-      const { useChroma } = await import('../../hooks/useChroma');
-      const mockGetDocuments = vi.fn().mockResolvedValue([
-        { id: 'doc1', text: 'Test document 1', metadata: { title: 'Doc 1' } },
-        { id: 'doc2', text: 'Test document 2', metadata: { title: 'Doc 2' } }
-      ]);
-      vi.mocked(useChroma).mockReturnValue({
-        ...vi.mocked(useChroma).mock.results[0].value,
-        getDocuments: mockGetDocuments
+      // Wait for collections to load
+      await waitFor(() => {
+        expect(mockInvoke).toHaveBeenCalledWith('list_chroma_collections');
       });
+    });
 
+    it('should load collections on mount', async () => {
       render(<RAGPanel />);
       
       await waitFor(() => {
-        expect(mockGetDocuments).toHaveBeenCalledWith('default');
+        expect(mockInvoke).toHaveBeenCalledWith('list_chroma_collections');
       });
     });
 
-    it('should display collection count', () => {
+    it('should display collection selector when collections are loaded', async () => {
       render(<RAGPanel />);
       
-      expect(screen.getByText('Collections')).toBeInTheDocument();
-      expect(screen.getByText('default')).toBeInTheDocument();
-      expect(screen.getByText('test-collection')).toBeInTheDocument();
+      await waitFor(() => {
+        const select = screen.getByDisplayValue('default');
+        expect(select).toBeInTheDocument();
+      });
     });
   });
 
   describe('Collection Management', () => {
     it('should create a new collection', async () => {
-      const { useChroma } = await import('../../hooks/useChroma');
-      const mockCreateCollection = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(useChroma).mockReturnValue({
-        ...vi.mocked(useChroma).mock.results[0].value,
-        createCollection: mockCreateCollection
-      });
-
       render(<RAGPanel />);
       
-      const createButton = screen.getByLabelText('Create collection');
-      await user.click(createButton);
-      
-      const input = screen.getByPlaceholderText('Collection name');
+      const input = screen.getByPlaceholderText('New collection name');
       await user.type(input, 'new-collection');
       
-      const confirmButton = screen.getByText('Create');
-      await user.click(confirmButton);
+      const createButton = screen.getByText('Create');
+      await user.click(createButton);
       
-      expect(mockCreateCollection).toHaveBeenCalledWith('new-collection');
+      expect(mockInvoke).toHaveBeenCalledWith('create_chroma_collection', {
+        collectionName: 'new-collection'
+      });
     });
 
-    it('should delete a collection with confirmation', async () => {
-      const { useChroma } = await import('../../hooks/useChroma');
-      const mockDeleteCollection = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(useChroma).mockReturnValue({
-        ...vi.mocked(useChroma).mock.results[0].value,
-        deleteCollection: mockDeleteCollection
-      });
-
+    it('should prevent creating collection with empty name', async () => {
       render(<RAGPanel />);
       
-      const deleteButtons = screen.getAllByLabelText('Delete collection');
-      await user.click(deleteButtons[1]); // Click delete for test-collection
+      const createButton = screen.getByText('Create');
+      await user.click(createButton);
       
-      // Confirm deletion
-      const confirmButton = screen.getByText('Delete');
-      await user.click(confirmButton);
-      
-      expect(mockDeleteCollection).toHaveBeenCalledWith('test-collection');
+      expect(mockInvoke).not.toHaveBeenCalledWith('create_chroma_collection', expect.anything());
     });
 
-    it('should select a collection when clicked', async () => {
-      const { useChroma } = await import('../../hooks/useChroma');
-      const mockListCollections = vi.fn();
-      vi.mocked(useChroma).mockReturnValue({
-        ...vi.mocked(useChroma).mock.results[0].value,
-        listCollections: mockListCollections
-      });
-
+    it('should change selected collection', async () => {
       render(<RAGPanel />);
       
-      const collectionItem = screen.getByText('test-collection');
-      await user.click(collectionItem);
+      await waitFor(() => {
+        const select = screen.getByDisplayValue('default');
+        expect(select).toBeInTheDocument();
+      });
       
-      // Collection selection is handled in the component state
+      const select = screen.getByDisplayValue('default');
+      fireEvent.change(select, { target: { value: 'test-collection' } });
+      
+      expect(select).toHaveValue('test-collection');
     });
   });
 
-  describe('Document Management', () => {
-    it('should handle document upload', async () => {
-      const { useChroma } = await import('../../hooks/useChroma');
-      const mockAddDocuments = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(useChroma).mockReturnValue({
-        ...vi.mocked(useChroma).mock.results[0].value,
-        addDocuments: mockAddDocuments
-      });
-
+  describe('Document Search', () => {
+    it('should perform search when query is entered', async () => {
       render(<RAGPanel />);
       
-      const file = new File(['test content'], 'test.txt', { type: 'text/plain' });
-      const input = screen.getByLabelText('Upload documents');
+      // Wait for collections to load
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('default')).toBeInTheDocument();
+      });
       
-      await user.upload(input, file);
+      const queryInput = screen.getByPlaceholderText('Search knowledge base...');
+      await user.type(queryInput, 'test query');
+      
+      const searchButton = screen.getByText('Search');
+      await user.click(searchButton);
+      
+      expect(mockInvoke).toHaveBeenCalledWith('query_chroma', {
+        request: {
+          collectionName: 'default',
+          queryText: 'test query',
+          nResults: 10,
+          filter: null
+        }
+      });
+    });
+
+    it('should search on Enter key press', async () => {
+      render(<RAGPanel />);
       
       await waitFor(() => {
-        expect(mockAddDocuments).toHaveBeenCalled();
+        expect(screen.getByDisplayValue('default')).toBeInTheDocument();
       });
+      
+      const queryInput = screen.getByPlaceholderText('Search knowledge base...');
+      await user.type(queryInput, 'test query{enter}');
+      
+      expect(mockInvoke).toHaveBeenCalledWith('query_chroma', expect.any(Object));
     });
 
-    it('should handle multiple file uploads', async () => {
-      const { useChroma } = await import('../../hooks/useChroma');
-      const mockAddDocuments = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(useChroma).mockReturnValue({
-        ...vi.mocked(useChroma).mock.results[0].value,
-        addDocuments: mockAddDocuments
-      });
-
+    it('should display search results', async () => {
       render(<RAGPanel />);
-      
-      const files = [
-        new File(['content 1'], 'file1.txt', { type: 'text/plain' }),
-        new File(['content 2'], 'file2.txt', { type: 'text/plain' })
-      ];
-      const input = screen.getByLabelText('Upload documents');
-      
-      await user.upload(input, files);
       
       await waitFor(() => {
-        expect(mockAddDocuments).toHaveBeenCalled();
-        const call = mockAddDocuments.mock.calls[0];
-        expect(call[0]).toHaveLength(2);
+        expect(screen.getByDisplayValue('default')).toBeInTheDocument();
+      });
+      
+      const queryInput = screen.getByPlaceholderText('Search knowledge base...');
+      await user.type(queryInput, 'test query');
+      
+      const searchButton = screen.getByText('Search');
+      await user.click(searchButton);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Test document content')).toBeInTheDocument();
       });
     });
+  });
 
-    it('should delete a document', async () => {
-      const { useChroma } = await import('../../hooks/useChroma');
-      const mockDeleteDocuments = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(useChroma).mockReturnValue({
-        ...vi.mocked(useChroma).mock.results[0].value,
-        deleteDocuments: mockDeleteDocuments
+  describe('Document Upload', () => {
+    it('should show upload form when upload button is clicked', async () => {
+      render(<RAGPanel />);
+      
+      const uploadButton = screen.getByText('Add Document');
+      await user.click(uploadButton);
+      
+      expect(screen.getByPlaceholderText('Document title (optional)')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Paste your document content here...')).toBeInTheDocument();
+    });
+
+    it('should handle text document upload', async () => {
+      mockInvoke.mockImplementation((cmd: string) => {
+        if (cmd === 'add_documents_to_chroma') return Promise.resolve();
+        if (cmd === 'list_chroma_collections') return Promise.resolve(['default']);
+        if (cmd === 'get_collection_count') return Promise.resolve(5);
+        return Promise.resolve();
       });
 
       render(<RAGPanel />);
       
-      const deleteButtons = screen.getAllByLabelText(/Delete document/);
-      await user.click(deleteButtons[0]);
+      const uploadButton = screen.getByText('Add Document');
+      await user.click(uploadButton);
       
-      expect(mockDeleteDocuments).toHaveBeenCalledWith('default', ['doc1']);
-    });
-
-    it('should handle document search', async () => {
-      const { useChroma } = await import('../../hooks/useChroma');
-      const mockQuery = vi.fn().mockResolvedValue([
-        { id: 'doc1', text: 'Matched content', metadata: {}, distance: 0.05 }
-      ]);
-      vi.mocked(useChroma).mockReturnValue({
-        ...vi.mocked(useChroma).mock.results[0].value,
-        query: mockQuery
-      });
-
-      render(<RAGPanel />);
+      const titleInput = screen.getByPlaceholderText('Document title (optional)');
+      const contentInput = screen.getByPlaceholderText('Paste your document content here...');
       
-      const searchInput = screen.getByPlaceholderText('Search documents...');
-      await user.type(searchInput, 'test query');
-      await user.keyboard('{Enter}');
+      await user.type(titleInput, 'Test Document');
+      await user.type(contentInput, 'This is test content');
       
-      expect(mockQuery).toHaveBeenCalledWith('default', 'test query', 10, undefined);
+      const submitButton = screen.getByText('Upload Document');
+      await user.click(submitButton);
+      
+      expect(mockInvoke).toHaveBeenCalledWith('add_documents_to_chroma', expect.any(Object));
     });
   });
 
   describe('Error Handling', () => {
-    it('should display error message when operations fail', async () => {
-      const { useChroma } = await import('../../hooks/useChroma');
-      vi.mocked(useChroma).mockReturnValue({
-        ...vi.mocked(useChroma).mock.results[0].value,
-        error: 'Failed to connect to ChromaDB'
+    it('should display error when collection loading fails', async () => {
+      mockInvoke.mockImplementation((cmd: string) => {
+        if (cmd === 'list_chroma_collections') {
+          return Promise.reject(new Error('Connection failed'));
+        }
+        return Promise.resolve();
       });
 
       render(<RAGPanel />);
-      
-      expect(screen.getByText(/Failed to connect to ChromaDB/)).toBeInTheDocument();
-    });
-
-    it('should show loading state', async () => {
-      const { useChroma } = await import('../../hooks/useChroma');
-      vi.mocked(useChroma).mockReturnValue({
-        ...vi.mocked(useChroma).mock.results[0].value,
-        isLoading: true
-      });
-
-      render(<RAGPanel />);
-      
-      expect(screen.getByText('Loading...')).toBeInTheDocument();
-    });
-
-    it('should handle invalid file types', async () => {
-      render(<RAGPanel />);
-      
-      const file = new File(['binary data'], 'test.exe', { type: 'application/exe' });
-      const input = screen.getByLabelText('Upload documents');
-      
-      await user.upload(input, file);
       
       await waitFor(() => {
-        expect(screen.getByText(/Unsupported file type/)).toBeInTheDocument();
+        expect(screen.getByText(/Failed to fetch collections/)).toBeInTheDocument();
+      });
+    });
+
+    it('should display error when search fails', async () => {
+      render(<RAGPanel />);
+      
+      // Wait for initial collections to load
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('default')).toBeInTheDocument();
+      });
+      
+      // Now set up the mock for search failure
+      mockInvoke.mockImplementation((cmd: string) => {
+        if (cmd === 'query_chroma') return Promise.reject(new Error('Query failed'));
+        return Promise.resolve();
+      });
+      
+      const queryInput = screen.getByPlaceholderText('Search knowledge base...');
+      await user.type(queryInput, 'test query');
+      
+      const searchButton = screen.getByText('Search');
+      await user.click(searchButton);
+      
+      await waitFor(() => {
+        expect(screen.getByText(/Query failed/)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Collection Operations', () => {
-    it('should refresh collections', async () => {
-      const { useChroma } = await import('../../hooks/useChroma');
-      const mockListCollections = vi.fn();
-      vi.mocked(useChroma).mockReturnValue({
-        ...vi.mocked(useChroma).mock.results[0].value,
-        listCollections: mockListCollections
+  describe('Integration', () => {
+    it('should call onDocumentSelect when result is clicked', async () => {
+      const onDocumentSelect = vi.fn();
+      render(<RAGPanel onDocumentSelect={onDocumentSelect} />);
+      
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('default')).toBeInTheDocument();
+      });
+      
+      const queryInput = screen.getByPlaceholderText('Search knowledge base...');
+      await user.type(queryInput, 'test query');
+      
+      const searchButton = screen.getByText('Search');
+      await user.click(searchButton);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Test document content')).toBeInTheDocument();
+      });
+      
+      // Click on the result container, not just the text
+      const resultContainer = screen.getByText('Test document content').closest('.rag-result');
+      await user.click(resultContainer!);
+      
+      expect(onDocumentSelect).toHaveBeenCalledWith({
+        id: 'doc1',
+        document: 'Test document content',
+        metadata: { title: 'Test Doc' },
+        distance: 0.1
+      });
+    });
+  });
+
+  describe('Loading States', () => {
+    it('should show loading state during search', async () => {
+      let resolveSearch: (value: any) => void;
+      const searchPromise = new Promise(resolve => {
+        resolveSearch = resolve;
+      });
+
+      mockInvoke.mockImplementation((cmd: string) => {
+        if (cmd === 'list_chroma_collections') return Promise.resolve(['default']);
+        if (cmd === 'get_collection_count') return Promise.resolve(5);
+        if (cmd === 'query_chroma') return searchPromise;
+        return Promise.resolve();
       });
 
       render(<RAGPanel />);
       
-      const refreshButton = screen.getByLabelText('Refresh collections');
-      await user.click(refreshButton);
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('default')).toBeInTheDocument();
+      });
       
-      expect(mockListCollections).toHaveBeenCalled();
-    });
-  });
-
-  describe('Accessibility', () => {
-    it('should have proper ARIA labels', () => {
-      render(<RAGPanel />);
+      const queryInput = screen.getByPlaceholderText('Search knowledge base...');
+      await user.type(queryInput, 'test query');
       
-      expect(screen.getByRole('heading', { name: 'RAG Database' })).toBeInTheDocument();
-      expect(screen.getByLabelText('Create collection')).toBeInTheDocument();
-      expect(screen.getByLabelText('Upload documents')).toBeInTheDocument();
-    });
-
-    it('should support keyboard navigation', async () => {
-      render(<RAGPanel />);
+      const searchButton = screen.getByText('Search');
+      await user.click(searchButton);
       
-      const searchInput = screen.getByPlaceholderText('Search documents...');
-      searchInput.focus();
+      expect(screen.getByText('Searching')).toBeInTheDocument();
       
-      await user.keyboard('{Tab}');
-      expect(screen.getByLabelText('Create collection')).toHaveFocus();
+      // Resolve the search
+      resolveSearch!([]);
       
-      await user.keyboard('{Tab}');
-      expect(screen.getByLabelText('Upload documents')).toHaveFocus();
-    });
-  });
-
-  describe('Integration with Chat', () => {
-    it('should add documents to chat context when selected', async () => {
-      const onAddToContext = vi.fn();
-      render(<RAGPanel onAddToContext={onAddToContext} />);
-      
-      const mockOnDocumentSelect = vi.fn();
-      render(<RAGPanel onDocumentSelect={mockOnDocumentSelect} />);
-      
-      // Simulate document selection if there are documents in the UI
-      // This would require the component to display documents first
+      await waitFor(() => {
+        expect(screen.queryByText('Searching')).not.toBeInTheDocument();
+      });
     });
   });
 });

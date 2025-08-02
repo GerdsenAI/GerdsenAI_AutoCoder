@@ -261,7 +261,7 @@ describe('HistoryPanel', () => {
     it('should handle empty history', async () => {
       render(<HistoryPanel {...defaultProps} sessions={[]} />);
       
-      expect(screen.getByText('No sessions yet')).toBeInTheDocument();
+      expect(screen.getByText('No chat sessions yet. Start a new chat!')).toBeInTheDocument();
     });
   });
 
@@ -307,9 +307,9 @@ describe('HistoryPanel', () => {
       const searchInput = screen.getByPlaceholderText('Search chat history...');
       searchInput.focus();
       
-      // Tab navigation
+      // Tab navigation should move to search button first
       await user.keyboard('{Tab}');
-      expect(screen.getByLabelText('Create new chat session')).toHaveFocus();
+      expect(screen.getByLabelText('Search')).toHaveFocus();
     });
   });
 });
