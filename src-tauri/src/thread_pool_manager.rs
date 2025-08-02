@@ -100,6 +100,7 @@ struct WorkerPool {
 struct TaskExecutionStats {
     pub started_at: Instant,
     pub completed_at: Option<Instant>,
+    #[allow(dead_code)]
     pub memory_used: Option<usize>,
 }
 
@@ -225,6 +226,7 @@ impl WorkerPool {
 /// Main thread pool manager
 pub struct ThreadPoolManager {
     pools: HashMap<TaskType, WorkerPool>,
+    #[allow(dead_code)]
     default_config: ThreadPoolConfig,
 }
 

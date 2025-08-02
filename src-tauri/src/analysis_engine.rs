@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use tokio::time::{timeout, Duration};
 use crate::ollama_client::{OllamaClient, GenerateOptions};
 use crate::chroma_manager::ChromaManager;
-use uuid::Uuid;
 
 /// Analysis mode types for Deep Analysis Mode
 #[derive(Debug, Clone, Serialize, Deserialize)]

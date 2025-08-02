@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering}; 
+use std::sync::atomic::{AtomicBool, Ordering}; 
 use dashmap::DashMap;
 use std::sync::Arc;
 use crate::ollama_client::OllamaClient;
@@ -1038,7 +1038,7 @@ impl ChromaManager {
         }
 
         let health_monitor = self.health_monitor.clone();
-        let collections_clone = Arc::new(TokioMutex::new(&self.collections as *const HashMap<String, InMemoryCollection>));
+        let _collections_clone = Arc::new(TokioMutex::new(&self.collections as *const HashMap<String, InMemoryCollection>));
         
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(
@@ -1070,12 +1070,12 @@ impl ChromaManager {
     pub async fn validate_connection(&self) -> Result<bool, Box<dyn Error + Send + Sync>> {
         // For in-memory implementation, always return true
         // In future real ChromaDB integration, this would test actual connection
-        let start_time = Instant::now();
+        let _start_time = Instant::now();
         
         // Simulate connection validation by checking if we can perform basic operations
         let validation_result = self.with_health_monitoring("connection_validation", || {
             // Test basic functionality
-            if self.collections.len() >= 0 {
+            if true { // Collections are always valid in-memory
                 Ok(true)
             } else {
                 Err("Collections HashMap is invalid".into())
@@ -1284,7 +1284,7 @@ pub async fn invalidate_collection_cache(
     collection_name: String,
 ) -> Result<(), String> {
     let manager = chroma_manager.lock().await;
-    manager.invalidate_collection_cache(&collection_name);
+    let _ = manager.invalidate_collection_cache(&collection_name);
     Ok(())
 }
 
@@ -1405,20 +1405,20 @@ mod tests {
             
             // Create collection
             let collection_name = "test_collection_".to_string() + &uuid::Uuid::new_v4().to_string();
-            manager.create_collection(&collection_name, HashMap::new())
-                .expect("Failed to create collection");
+            manager.get_or_create_collection(&collection_name);
             
             // List collections
             let collections = manager.list_collections().expect("Failed to list collections");
-            assert!(collections.iter().any(|c| c.name == collection_name));
+            assert!(collections.contains(&collection_name));
             
             // Delete collection
-            manager.delete_collection(&collection_name)
-                .expect("Failed to delete collection");
+            manager.collections.remove(&collection_name);
             
             // Verify deletion
             let collections = manager.list_collections().expect("Failed to list collections");
-            assert!(!collections.iter().any(|c| c.name == collection_name));
+            assert!(!collections.contains(&collection_name));
+
+            
         });
     }
     
@@ -1430,24 +1430,38 @@ mod tests {
             let collection_name = "test_docs_".to_string() + &uuid::Uuid::new_v4().to_string();
             
             // Create collection
-            manager.create_collection(&collection_name, HashMap::new())
-                .expect("Failed to create collection");
+            manager.get_or_create_collection(&collection_name);
             
             // Add documents
-            let docs = vec![
-                serde_json::json!({
-                    "id": "doc1",
-                    "content": "This is test document 1",
-                    "metadata": {"type": "test"}
-                }),
-                serde_json::json!({
-                    "id": "doc2",
-                    "content": "This is test document 2",
-                    "metadata": {"type": "test"}
-                }),
+            let documents = vec![
+                "This is test document 1".to_string(),
+                "This is test document 2".to_string(),
             ];
+            let metadatas = vec![
+                DocumentMetadata {
+                    source: "test".to_string(),
+                    document_type: "test".to_string(),
+                    language: None,
+                    timestamp: "2023-01-01".to_string(),
+                    file_path: None,
+                    url: None,
+                    title: None,
+                    additional: HashMap::new(),
+                },
+                DocumentMetadata {
+                    source: "test".to_string(),
+                    document_type: "test".to_string(),
+                    language: None,
+                    timestamp: "2023-01-01".to_string(),
+                    file_path: None,
+                    url: None,
+                    title: None,
+                    additional: HashMap::new(),
+                },
+            ];
+            let ids = Some(vec!["doc1".to_string(), "doc2".to_string()]);
             
-            manager.add_documents(&collection_name, docs)
+            manager.add_documents(&collection_name, documents, metadatas, ids)
                 .expect("Failed to add documents");
             
             // Get documents

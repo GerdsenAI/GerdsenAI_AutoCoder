@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use crate::code_analysis::{CodeAnalysisService, CodeAnalysisResponse};
 
 // Performance optimization structures
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct DebouncedAnalyzer {
     delay: Duration,
@@ -46,12 +47,14 @@ impl DebouncedAnalyzer {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct CachedAnalysisResult {
     pub result: CodeAnalysisResponse,
     pub timestamp: Instant,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct AIResponseCache {
     cache: Arc<Mutex<HashMap<String, CachedAnalysisResult>>>,
@@ -195,7 +198,7 @@ impl LanguageServer for Backend {
         let document_map = self.document_map.lock().await;
         let uri = &params.text_document_position_params.text_document.uri;
         
-        if let Some(document) = document_map.get(uri) {
+        if let Some(_document) = document_map.get(uri) {
             let position = params.text_document_position_params.position;
             
             // Extract the word and surrounding context
@@ -229,7 +232,7 @@ impl LanguageServer for Backend {
         let document_map = self.document_map.lock().await;
         let uri = &params.text_document_position.text_document.uri;
         
-        if let Some(document) = document_map.get(uri) {
+        if let Some(_document) = document_map.get(uri) {
             let position = params.text_document_position.position;
             let language = Self::detect_language_from_uri(uri);
             
@@ -267,7 +270,7 @@ impl LanguageServer for Backend {
         let document_map = self.document_map.lock().await;
         let uri = &params.text_document.uri;
         
-        if let Some(document) = document_map.get(uri) {
+        if let Some(_document) = document_map.get(uri) {
             let mut actions = vec![];
             
             // Add code actions for each diagnostic
@@ -343,7 +346,7 @@ impl LanguageServer for Backend {
                             let uri = Url::parse(&uri_str).unwrap();
                             let document_map = self.document_map.lock().await;
                             
-                            if let Some(document) = document_map.get(&uri) {
+                            if let Some(_document) = document_map.get(&uri) {
                                 // Analyze the code
                                 self.client
                                     .show_message(MessageType::INFO, "Analyzing code...")
@@ -826,7 +829,7 @@ pub async fn start_lsp_server() {
 
 #[tauri::command]
 pub async fn initialize_lsp_server(
-    ai_service: State<'_, Arc<CodeAnalysisService>>,
+    _ai_service: State<'_, Arc<CodeAnalysisService>>,
 ) -> std::result::Result<String, String> {
     // In a real implementation, you would start the LSP server in a background task
     // For now, we'll just return a success message
@@ -842,8 +845,8 @@ pub async fn shutdown_lsp_server() -> std::result::Result<String, String> {
 #[tauri::command]
 pub async fn lsp_open_document(
     uri: String,
-    content: String,
-    language: String,
+    _content: String,
+    _language: String,
 ) -> std::result::Result<String, String> {
     // Placeholder for document open handling
     Ok(format!("Document {} opened successfully", uri))
@@ -858,7 +861,7 @@ pub async fn lsp_close_document(uri: String) -> std::result::Result<String, Stri
 #[tauri::command]
 pub async fn lsp_update_document(
     uri: String,
-    content: String,
+    _content: String,
 ) -> std::result::Result<String, String> {
     // Placeholder for document update handling
     Ok(format!("Document {} updated successfully", uri))
@@ -866,8 +869,8 @@ pub async fn lsp_update_document(
 
 #[tauri::command]
 pub async fn lsp_get_diagnostics(
-    uri: String,
-    ai_service: State<'_, Arc<CodeAnalysisService>>,
+    _uri: String,
+    _ai_service: State<'_, Arc<CodeAnalysisService>>,
 ) -> std::result::Result<Vec<String>, String> {
     // Placeholder for getting diagnostics
     Ok(vec!["Example diagnostic".to_string()])
@@ -875,11 +878,11 @@ pub async fn lsp_get_diagnostics(
 
 #[tauri::command]
 pub async fn lsp_get_completions(
-    uri: String,
-    position_line: u32,
-    position_character: u32,
-    context: Option<String>,
-    ai_service: State<'_, Arc<CodeAnalysisService>>,
+    _uri: String,
+    _position_line: u32,
+    _position_character: u32,
+    _context: Option<String>,
+    _ai_service: State<'_, Arc<CodeAnalysisService>>,
 ) -> std::result::Result<Vec<String>, String> {
     // Placeholder for getting completions
     Ok(vec!["example_completion".to_string(), "another_completion".to_string()])
@@ -887,10 +890,10 @@ pub async fn lsp_get_completions(
 
 #[tauri::command]
 pub async fn lsp_get_hover(
-    uri: String,
-    position_line: u32,
-    position_character: u32,
-    ai_service: State<'_, Arc<CodeAnalysisService>>,
+    _uri: String,
+    _position_line: u32,
+    _position_character: u32,
+    _ai_service: State<'_, Arc<CodeAnalysisService>>,
 ) -> std::result::Result<Option<String>, String> {
     // Placeholder for getting hover information
     Ok(Some("Hover information for the symbol".to_string()))
@@ -898,12 +901,12 @@ pub async fn lsp_get_hover(
 
 #[tauri::command]
 pub async fn lsp_get_code_actions(
-    uri: String,
-    range_start_line: u32,
-    range_start_character: u32,
-    range_end_line: u32,
-    range_end_character: u32,
-    ai_service: State<'_, Arc<CodeAnalysisService>>,
+    _uri: String,
+    _range_start_line: u32,
+    _range_start_character: u32,
+    _range_end_line: u32,
+    _range_end_character: u32,
+    _ai_service: State<'_, Arc<CodeAnalysisService>>,
 ) -> std::result::Result<Vec<String>, String> {
     // Placeholder for getting code actions
     Ok(vec!["Fix with AI".to_string(), "Analyze code".to_string()])
@@ -912,8 +915,8 @@ pub async fn lsp_get_code_actions(
 #[tauri::command]
 pub async fn lsp_execute_command(
     command: String,
-    args: Option<Vec<String>>,
-    ai_service: State<'_, Arc<CodeAnalysisService>>,
+    _args: Option<Vec<String>>,
+    _ai_service: State<'_, Arc<CodeAnalysisService>>,
 ) -> std::result::Result<String, String> {
     // Placeholder for executing commands
     Ok(format!("Command {} executed successfully", command))
