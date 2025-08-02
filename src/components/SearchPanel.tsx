@@ -1,87 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import React from 'react';
+import { useSearch, SearchResult } from '../hooks/useSearch';
 import SearchHealthIndicator from './SearchHealthIndicator';
 import { SearchHealthStatus } from '../hooks/useSearchHealth';
 import './SearchPanel.css';
 
-interface SearchResult {
-  title: string;
-  url: string;
-  content: string;
-  engine: string;
-  score?: number;
-}
-
-interface SearchPanelProps {
+export interface SearchPanelProps {
   onResultSelect?: (result: SearchResult) => void;
+  className?: string;
 }
 
-export const SearchPanel: React.FC<SearchPanelProps> = ({ onResultSelect }) => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [activeEngines, setActiveEngines] = useState<string[]>(['github', 'stackoverflow', 'google']);
-  const [availableEngines, setAvailableEngines] = useState<string[]>([
-    'github',
-    'stackoverflow',
-    'google',
-    'duckduckgo',
-    'bing',
-    'brave',
-    'documentation',
-    'forums'
-  ]);
-  const [searchServiceHealthy, setSearchServiceHealthy] = useState<boolean>(true);
+export const SearchPanel: React.FC<SearchPanelProps> = ({ 
+  onResultSelect,
+  className = ''
+}) => {
+  // Business logic handled by custom hook
+  const {
+    query,
+    results,
+    isLoading,
+    error,
+    availableEngines,
+    activeEngines,
+    isHealthy,
+    setQuery,
+    search,
+    toggleEngine,
+    updateHealthStatus,
+    clearError
+  } = useSearch();
 
-  // Fetch available engines on component mount
-  useEffect(() => {
-    const fetchEngines = async () => {
-      try {
-        const engines = await invoke<string[]>('get_available_engines');
-        if (engines && engines.length > 0) {
-          setAvailableEngines(engines);
-          setActiveEngines(engines.slice(0, 3)); // Default to first 3 engines
-        }
-      } catch (error) {
-        console.error('Failed to fetch available engines:', error);
-      }
-    };
-
-    fetchEngines();
-  }, []);
-
-  const handleHealthChange = (status: SearchHealthStatus) => {
-    setSearchServiceHealthy(status.isHealthy);
-  };
-
+  // Event handlers - clean and simple
   const handleSearch = async () => {
-    if (query.trim() === '' || loading) return;
-
-    // Check if search service is healthy before attempting search
-    if (!searchServiceHealthy) {
-      console.warn('Search service is not healthy, attempting search anyway...');
-    }
-
-    setLoading(true);
-    setResults([]);
-
-    try {
-      const searchResults = await invoke<SearchResult[]>('search_web', {
-        query: query.trim(),
-        engines: activeEngines,
-        limit: 10
-      });
-
-      setResults(searchResults);
-    } catch (error) {
-      console.error('Search failed:', error);
-      // Show user-friendly error message when service is unavailable
-      if (!searchServiceHealthy) {
-        alert('Search service is currently unavailable. Please check the service status or try again later.');
-      }
-    } finally {
-      setLoading(false);
-    }
+    await search();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -90,22 +40,17 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onResultSelect }) => {
     }
   };
 
-  const toggleEngine = (engine: string) => {
-    setActiveEngines(prev => 
-      prev.includes(engine)
-        ? prev.filter(e => e !== engine)
-        : [...prev, engine]
-    );
+  const handleResultClick = (result: SearchResult) => {
+    onResultSelect?.(result);
   };
 
-  const handleResultClick = (result: SearchResult) => {
-    if (onResultSelect) {
-      onResultSelect(result);
-    }
+  const handleHealthChange = (status: SearchHealthStatus) => {
+    updateHealthStatus(status.isHealthy);
   };
 
   return (
-    <div className="search-panel">
+    <div className={`search-panel ${className}`}>
+      {/* Header Section */}
       <div className="search-header">
         <div className="search-input-wrapper">
           <span className="search-icon">🔍</span>
@@ -116,7 +61,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onResultSelect }) => {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search documentation, Stack Overflow, GitHub..."
-            disabled={loading || !searchServiceHealthy}
+            disabled={isLoading || !isHealthy}
           />
         </div>
         <SearchHealthIndicator 
@@ -126,20 +71,32 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onResultSelect }) => {
         />
       </div>
 
+      {/* Engine Filters */}
       <div className="search-filters">
         {availableEngines.map((engine) => (
           <button
             key={engine}
             className={`filter-chip ${activeEngines.includes(engine) ? 'active' : ''}`}
             onClick={() => toggleEngine(engine)}
+            disabled={isLoading}
           >
             {engine}
           </button>
         ))}
       </div>
 
+      {/* Results Section */}
       <div className="search-results">
-        {loading ? (
+        {/* Error Display */}
+        {error && (
+          <div className="search-error">
+            {error}
+            <button onClick={clearError} className="error-dismiss">×</button>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading ? (
           <div className="loading-indicator">
             <span>Searching</span>
             <span className="loading-dots">
@@ -149,13 +106,22 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({ onResultSelect }) => {
             </span>
           </div>
         ) : results.length === 0 && query.trim() !== '' ? (
-          <div className="no-results">No results found</div>
+          <div className="no-results">No results found for "{query}"</div>
         ) : (
+          /* Results */
           results.map((result, index) => (
             <div
-              key={index}
+              key={`${result.url}-${index}`}
               className="search-result"
               onClick={() => handleResultClick(result)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleResultClick(result);
+                }
+              }}
             >
               <h3 className="result-title">{result.title}</h3>
               <div className="result-url">{result.url}</div>
