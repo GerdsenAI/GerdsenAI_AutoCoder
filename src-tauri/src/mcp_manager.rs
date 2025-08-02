@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::process::{Child, Command, Stdio};
+use std::process::{Command, Stdio};
 use tokio::sync::{Mutex, RwLock};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command as TokioCommand;
@@ -43,7 +43,7 @@ pub struct MCPTool {
 #[derive(Debug)]
 struct MCPConnection {
     server_id: String,
-    process: Option<Child>,
+    process: Option<tokio::process::Child>,
     stdin: Option<tokio::process::ChildStdin>,
     stdout_reader: Option<BufReader<tokio::process::ChildStdout>>,
     tools: Vec<MCPTool>,
@@ -201,7 +201,7 @@ impl MCPManager {
             
             // Terminate the process
             if let Some(mut process) = connection.process.take() {
-                let _ = process.kill().await;
+                let _ = process.kill();
                 let _ = process.wait().await;
             }
         }

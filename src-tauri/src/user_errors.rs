@@ -25,6 +25,38 @@ pub trait ToUserError {
     fn to_user_error(&self) -> UserError;
 }
 
+// Implementation for basic Error type (used by commands.rs)
+impl ToUserError for Box<dyn std::error::Error> {
+    fn to_user_error(&self) -> UserError {
+        // Delegate to the existing logic by converting to the same error patterns
+        let error_str = self.to_string().to_lowercase();
+        
+        // Connection-related errors
+        if error_str.contains("connection refused") || error_str.contains("could not connect") {
+            if error_str.contains("11434") || error_str.contains("ollama") {
+                return UserError {
+                    title: "Ollama Not Running".to_string(),
+                    message: "Cannot connect to Ollama. The AI service appears to be offline.".to_string(),
+                    suggestion: Some("Please start Ollama by running 'ollama serve' in your terminal, or restart the Ollama application.".to_string()),
+                    help_link: Some("https://ollama.ai/download".to_string()),
+                    error_code: "OLLAMA_OFFLINE".to_string(),
+                    technical_details: Some(self.to_string()),
+                };
+            }
+        }
+        
+        // Default generic error
+        UserError {
+            title: "Unexpected Error".to_string(),
+            message: "An unexpected error occurred while processing your request.".to_string(),
+            suggestion: Some("Please try again. If the problem persists, you can report this issue for assistance.".to_string()),
+            help_link: None,
+            error_code: "GENERIC_ERROR".to_string(),
+            technical_details: Some(self.to_string()),
+        }
+    }
+}
+
 impl ToUserError for Box<dyn std::error::Error + Send> {
     fn to_user_error(&self) -> UserError {
         let error_str = self.to_string().to_lowercase();
@@ -157,6 +189,38 @@ impl ToUserError for Box<dyn std::error::Error + Send> {
         UserError {
             title: "Unexpected Error".to_string(),
             message: "An unexpected error occurred.".to_string(),
+            suggestion: Some("Please try again. If the problem persists, you can report this issue for assistance.".to_string()),
+            help_link: None,
+            error_code: "GENERIC_ERROR".to_string(),
+            technical_details: Some(self.to_string()),
+        }
+    }
+}
+
+// Add implementation for Send + Sync error types (needed for AI providers)
+impl ToUserError for Box<dyn std::error::Error + Send + Sync> {
+    fn to_user_error(&self) -> UserError {
+        // Delegate to the existing logic by converting to the same error patterns
+        let error_str = self.to_string().to_lowercase();
+        
+        // Connection-related errors
+        if error_str.contains("connection refused") || error_str.contains("could not connect") {
+            if error_str.contains("11434") || error_str.contains("ollama") {
+                return UserError {
+                    title: "Ollama Not Running".to_string(),
+                    message: "Cannot connect to Ollama. The AI service appears to be offline.".to_string(),
+                    suggestion: Some("Please start Ollama by running 'ollama serve' in your terminal, or restart the Ollama application.".to_string()),
+                    help_link: Some("https://ollama.ai/download".to_string()),
+                    error_code: "OLLAMA_OFFLINE".to_string(),
+                    technical_details: Some(self.to_string()),
+                };
+            }
+        }
+        
+        // Default generic error
+        UserError {
+            title: "Unexpected Error".to_string(),
+            message: "An unexpected error occurred while processing your request.".to_string(),
             suggestion: Some("Please try again. If the problem persists, you can report this issue for assistance.".to_string()),
             help_link: None,
             error_code: "GENERIC_ERROR".to_string(),
