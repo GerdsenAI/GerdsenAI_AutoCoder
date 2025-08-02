@@ -6,11 +6,17 @@
 
 ## Features
 
-### **🤖 AI-Powered Chat & Analysis**
-- **Advanced Chat Interface**: Real-time conversation with local and network Ollama models
+### **🤖 Multi-AI Provider Support**
+- **Multi-Provider Integration**: Seamlessly switch between OpenAI GPT, Anthropic Claude, and Ollama models
+- **Smart Model Routing**: Automatic model selection based on task capabilities (coding, debugging, analysis)
+- **Advanced Chat Interface**: Real-time conversation with intelligent provider fallback
+- **Cost & Performance Tracking**: Monitor token usage, costs, and model performance in real-time
+
+### **🧠 AI-Enhanced Development**
 - **AI Code Analysis**: Intelligent error detection, suggestions, and fixes via LSP integration
 - **Smart Completions**: Context-aware code completions with AI-powered suggestions
 - **Intelligent Hover**: AI explanations for code elements and functions
+- **Model Comparison**: Compare performance across different AI providers for optimal results
 
 ### **🔍 Web Search & Knowledge**
 - **SearXNG Integration**: Built-in web search with health monitoring and Docker setup

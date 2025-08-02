@@ -116,7 +116,7 @@ This inquiry-based approach leads to deeper understanding, fewer bugs, and bette
 - **Frontend**: React 19 with TypeScript, Vite bundler, CSS modules
 - **Desktop Framework**: Tauri 2.x (Rust backend + WebView frontend)
 - **State Management**: React hooks with local state, persistent storage via Tauri commands
-- **AI Integration**: Ollama client for local/network LLM models
+- **Multi-AI Integration**: OpenAI GPT, Anthropic Claude, and Ollama with smart routing
 - **Search**: Embedded SearXNG instance for web search
 - **Vector Database**: ChromaDB for RAG (Retrieval-Augmented Generation)
 - **LSP**: Custom Language Server Protocol implementation
@@ -126,8 +126,9 @@ The application follows a modular architecture with clear separation of concerns
 
 #### Frontend Components (`src/`)
 - **App.tsx**: Main application shell with tab navigation (Chat, Search, RAG, History)
-- **ChatInterface**: Real-time chat with Ollama models, session management
-- **ModelSelector**: Dynamic model selection from local/network Ollama instances
+- **ChatInterface**: Real-time chat with multi-AI provider support and smart routing
+- **MultiAIModelSelector**: Comprehensive model selection with provider configuration
+- **useMultiAI**: React hook for multi-AI provider management and state
 - **RAGPanel**: Document management and vector database operations
 - **SearchPanel**: SearXNG integration for web search
 - **HistoryPanel**: Chat session persistence and management
@@ -135,13 +136,18 @@ The application follows a modular architecture with clear separation of concerns
 #### Backend Services (`src-tauri/src/`)
 - **commands.rs**: Enhanced Tauri commands with comprehensive Ollama integration
 - **ollama_client.rs**: Advanced HTTP client with streaming, caching, and connection pooling
+- **ai_providers.rs**: Abstract AI provider system with trait-based architecture
+- **openai_client.rs**: OpenAI GPT integration with streaming and cost tracking
+- **anthropic_client.rs**: Anthropic Claude integration with message format support
+- **ollama_provider.rs**: Ollama adapter for multi-AI system compatibility
+- **multi_ai_commands.rs**: Tauri commands for multi-AI provider management
 - **searxng_commands.rs**: Complete SearXNG integration with health monitoring  
 - **searxng_client.rs**: SearXNG client with Docker support and error handling
 - **chroma_manager.rs**: Full-featured RAG system with document management and search
 - **lsp_server.rs**: AI-enhanced Language Server with debounced analysis and caching
 - **window_manager.rs**: Multi-window desktop application management
 - **history_manager.rs**: Chat session persistence and retrieval
-- **code_analysis.rs**: AI-powered code analysis with Ollama integration
+- **code_analysis.rs**: AI-powered code analysis with multi-AI integration
 - **doc_scraper.rs**: Documentation extraction and RAG indexing
 
 #### IDE Extensions
