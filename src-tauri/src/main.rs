@@ -9,8 +9,14 @@ mod context_manager;
 mod analysis_engine;
 mod mcp_manager;
 mod mcp_commands;
+mod operation_manager;
 mod thread_pool_manager;
 mod user_errors;
+mod ai_providers;
+mod ollama_provider;
+mod openai_client;
+mod anthropic_client;
+mod multi_ai_commands;
 // mod doc_scraper;
 // mod window_manager;
 mod history_manager;
@@ -86,7 +92,7 @@ fn main() {
         .manage(ollama_client)
         .manage(shared_ollama_client)
         .manage(SearXNGClient::new(None))
-        .manage(Mutex::new(chroma_manager))
+        .manage(tokio::sync::Mutex::new(chroma_manager))
         .manage(code_analysis_service)
         .manage(context_manager)
         .manage(mcp_manager)

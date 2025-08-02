@@ -195,7 +195,7 @@ pub struct AffectedFile {
     pub affected_symbols: Vec<Symbol>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ImpactLevel {
     None,
     Low,
@@ -626,7 +626,7 @@ impl CodeAnalysisService {
                             .map(|s| s.name.clone())
                             .collect::<HashSet<String>>();
                             
-                        Some((file_path_str, DependencyNode {
+                        Some((file_path_str.clone(), DependencyNode {
                             file_path: file_path_str,
                             language,
                             symbols,

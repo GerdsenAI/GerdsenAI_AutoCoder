@@ -375,6 +375,9 @@ impl AnalysisEngine {
         reasoning_chain: &[QuestionAnswerChain],
         solution: &str,
     ) -> bool {
+        // Get problem type before mutable borrow
+        let problem_type = self.classify_problem_type(original_prompt);
+        
         if let Some(manager) = &mut self.chroma_manager {
             // Create a comprehensive document that captures the reasoning pattern
             let reasoning_document = format!(
@@ -406,24 +409,31 @@ impl AnalysisEngine {
             let pattern_id = format!("deep_analysis_{}", uuid::Uuid::new_v4());
 
             // Create metadata for pattern matching
-            let metadata = HashMap::from([
-                ("type".to_string(), "deep_analysis_pattern".to_string()),
-                ("problem_type".to_string(), self.classify_problem_type(original_prompt)),
-                ("analysis_mode".to_string(), if reasoning_chain.len() > 0 {
-                    match reasoning_chain[0].question.to_lowercase().contains("assumption") {
-                        true => "socratic".to_string(),
-                        false => "systematic".to_string(),
-                    }
-                } else {
-                    "unknown".to_string()
-                }),
-                ("rounds".to_string(), reasoning_chain.len().to_string()),
-                ("avg_confidence".to_string(), format!("{:.2}", 
-                    reasoning_chain.iter().map(|qa| qa.confidence).sum::<f32>() / reasoning_chain.len() as f32)
-                ),
-                ("solution_length".to_string(), solution.len().to_string()),
-                ("timestamp".to_string(), chrono::Utc::now().to_rfc3339()),
-            ]);
+            let metadata = crate::chroma_manager::DocumentMetadata {
+                source: "deep_analysis_engine".to_string(),
+                document_type: "reasoning_pattern".to_string(),
+                language: Some("analysis".to_string()),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                file_path: None,
+                url: None,
+                title: None,
+                additional: HashMap::from([
+                    ("problem_type".to_string(), serde_json::Value::String(problem_type.clone())),
+                    ("analysis_mode".to_string(), serde_json::Value::String(if reasoning_chain.len() > 0 {
+                        match reasoning_chain[0].question.to_lowercase().contains("assumption") {
+                            true => "socratic".to_string(),
+                            false => "systematic".to_string(),
+                        }
+                    } else {
+                        "unknown".to_string()
+                    })),
+                    ("rounds".to_string(), serde_json::Value::String(reasoning_chain.len().to_string())),
+                    ("avg_confidence".to_string(), serde_json::Value::String(format!("{:.2}", 
+                        reasoning_chain.iter().map(|qa| qa.confidence).sum::<f32>() / reasoning_chain.len() as f32)
+                    )),
+                    ("solution_length".to_string(), serde_json::Value::String(solution.len().to_string())),
+                ]),
+            };
 
             // Try to add to ChromaDB reasoning patterns collection
             match manager.add_documents(
@@ -469,12 +479,16 @@ impl AnalysisEngine {
 
     /// Query similar reasoning patterns from RAG for enhanced analysis
     pub async fn query_similar_patterns(&mut self, prompt: &str, limit: usize) -> Vec<String> {
+        // Get problem type before mutable borrow
+        let problem_type = self.classify_problem_type(prompt);
+        
         if let Some(manager) = &mut self.chroma_manager {
+            
             // Create a query that looks for similar problem patterns
             let query = format!(
                 "Similar problem to analyze: {} Find reasoning patterns for {} problems",
                 prompt,
-                self.classify_problem_type(prompt)
+                problem_type
             );
 
             match manager.query("reasoning_patterns", &query, limit, None) {

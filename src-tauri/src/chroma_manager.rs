@@ -98,6 +98,7 @@ pub struct QueryCache {
     config: CacheConfig,
     hit_count: Arc<std::sync::atomic::AtomicU64>,
     miss_count: Arc<std::sync::atomic::AtomicU64>,
+    cleanup_started: Arc<std::sync::atomic::AtomicBool>,
 }
 
 /// Batch processing configuration
@@ -267,25 +268,42 @@ impl QueryCache {
         let cache = DashMap::new();
         let hit_count = Arc::new(std::sync::atomic::AtomicU64::new(0));
         let miss_count = Arc::new(std::sync::atomic::AtomicU64::new(0));
-
-        // Start cleanup task if cache is enabled
-        if config.enabled {
-            let cache_cleanup = cache.clone();
-            let cleanup_interval = Duration::from_secs(config.cleanup_interval_seconds);
-            tokio::spawn(async move {
-                let mut interval = tokio::time::interval(cleanup_interval);
-                loop {
-                    interval.tick().await;
-                    Self::cleanup_expired_entries(&cache_cleanup);
-                }
-            });
-        }
+        let cleanup_started = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
         Self {
             cache,
             config,
             hit_count,
             miss_count,
+            cleanup_started,
+        }
+    }
+
+    /// Start cleanup task if not already started and cache is enabled
+    fn ensure_cleanup_task_started(&self) {
+        if self.config.enabled && 
+           !self.cleanup_started.load(std::sync::atomic::Ordering::Acquire) {
+            
+            if self.cleanup_started.compare_exchange(
+                false, 
+                true, 
+                std::sync::atomic::Ordering::AcqRel, 
+                std::sync::atomic::Ordering::Acquire
+            ).is_ok() {
+                let cache_cleanup = self.cache.clone();
+                let cleanup_interval = Duration::from_secs(self.config.cleanup_interval_seconds);
+                
+                // Only spawn if we're in a Tokio runtime context
+                if tokio::runtime::Handle::try_current().is_ok() {
+                    tokio::spawn(async move {
+                        let mut interval = tokio::time::interval(cleanup_interval);
+                        loop {
+                            interval.tick().await;
+                            Self::cleanup_expired_entries(&cache_cleanup);
+                        }
+                    });
+                }
+            }
         }
     }
 
@@ -322,6 +340,9 @@ impl QueryCache {
             return None;
         }
 
+        // Ensure cleanup task is started
+        self.ensure_cleanup_task_started();
+
         let cache_key = Self::generate_cache_key(collection_name, query_text, n_results, filter);
         
         if let Some(mut cached_entry) = self.cache.get_mut(&cache_key) {
@@ -353,6 +374,9 @@ impl QueryCache {
         if !self.config.enabled {
             return;
         }
+
+        // Ensure cleanup task is started
+        self.ensure_cleanup_task_started();
 
         // Check if cache is full and evict if necessary
         if self.cache.len() >= self.config.max_entries {
@@ -654,7 +678,7 @@ impl ChromaManager {
         documents: Vec<String>,
         metadatas: Vec<DocumentMetadata>,
         ids: Option<Vec<String>>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
         let collection = self.get_or_create_collection(collection_name);
         
         // Generate IDs if not provided
@@ -815,7 +839,7 @@ impl ChromaManager {
     }
 
     /// Invalidate cache for a specific collection
-    pub fn invalidate_collection_cache(&self, collection_name: &str) {
+    pub async fn invalidate_collection_cache(&self, collection_name: &str) {
         self.query_cache.invalidate_collection(collection_name)
     }
 
@@ -838,7 +862,7 @@ impl ChromaManager {
         metadatas: Vec<DocumentMetadata>,
         ids: Option<Vec<String>>,
         priority: Option<TaskPriority>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
         if let Some(ref batch_processor) = self.batch_processor {
             // Generate IDs if not provided
             let document_ids = if let Some(provided_ids) = ids {
@@ -913,7 +937,7 @@ impl ChromaManager {
         document: String,
         metadata: DocumentMetadata,
         id: Option<String>,
-    ) -> Result<String, Box<dyn Error>> {
+    ) -> Result<String, Box<dyn Error + Send + Sync>> {
         let document_id = id.unwrap_or_else(|| format!("doc_{}", uuid::Uuid::new_v4()));
         
         if let Some(ref batch_processor) = self.batch_processor {
@@ -954,9 +978,9 @@ impl ChromaManager {
     }
 
     /// Execute operation with health monitoring and error handling
-    pub async fn with_health_monitoring<F, T>(&self, operation_name: &str, operation: F) -> Result<T, Box<dyn Error>>
+    pub async fn with_health_monitoring<F, T>(&self, operation_name: &str, operation: F) -> Result<T, Box<dyn Error + Send + Sync>>
     where
-        F: FnOnce() -> Result<T, Box<dyn Error>>,
+        F: FnOnce() -> Result<T, Box<dyn Error + Send + Sync>>,
     {
         let start_time = Instant::now();
         
@@ -981,7 +1005,7 @@ impl ChromaManager {
     }
 
     /// Update health statistics with current collection and document counts
-    async fn update_health_stats(&self) -> Result<(), Box<dyn Error>> {
+    async fn update_health_stats(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
         let collection_count = self.collections.len();
         let document_count: usize = self.collections.values()
             .map(|collection| collection.documents.len())
@@ -1043,7 +1067,7 @@ impl ChromaManager {
     }
 
     /// Validate ChromaDB connection (for future real ChromaDB integration)
-    pub async fn validate_connection(&self) -> Result<bool, Box<dyn Error>> {
+    pub async fn validate_connection(&self) -> Result<bool, Box<dyn Error + Send + Sync>> {
         // For in-memory implementation, always return true
         // In future real ChromaDB integration, this would test actual connection
         let start_time = Instant::now();
@@ -1068,8 +1092,8 @@ impl ChromaManager {
     }
 
     /// Perform health check with retry mechanism
-    pub async fn check_connection_with_retry(&self) -> Result<bool, Box<dyn Error>> {
-        let mut last_error = None;
+    pub async fn check_connection_with_retry(&self) -> Result<bool, Box<dyn Error + Send + Sync>> {
+        let mut last_error: Option<Box<dyn Error + Send + Sync>> = None;
         
         for attempt in 1..=self.health_monitor.config.max_retry_attempts {
             match self.validate_connection().await {
@@ -1132,61 +1156,61 @@ pub struct DeleteDocumentsRequest {
 }
 
 #[tauri::command]
-pub fn list_chroma_collections(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn list_chroma_collections(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<Vec<String>, String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     manager.list_collections().map_err(|e| format!("Failed to list collections: {}", e))
 }
 
 #[tauri::command]
-pub fn create_chroma_collection(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn create_chroma_collection(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
     collection_name: String,
 ) -> Result<(), String> {
-    let mut manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let mut manager = chroma_manager.lock().await;
     manager.get_or_create_collection(&collection_name);
     Ok(())
 }
 
 #[tauri::command]
-pub fn delete_chroma_collection(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn delete_chroma_collection(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
     collection_name: String,
 ) -> Result<(), String> {
-    let mut manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let mut manager = chroma_manager.lock().await;
     manager.collections.remove(&collection_name);
     Ok(())
 }
 
 #[tauri::command]
-pub fn add_documents_to_chroma(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn add_documents_to_chroma(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
     request: AddDocumentsRequest,
 ) -> Result<(), String> {
-    let mut manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let mut manager = chroma_manager.lock().await;
     manager.add_documents(&request.collection_name, request.documents, request.metadatas, request.ids)
                 .map_err(|e| format!("Failed to add documents: {}", e))
 }
 
 #[tauri::command]
-pub fn query_chroma(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn query_chroma(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
     request: QueryRequest,
 ) -> Result<Vec<QueryResult>, String> {
-    let mut manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let mut manager = chroma_manager.lock().await;
     manager.query(&request.collection_name, &request.query_text, request.n_results, request.filter)
                 .map_err(|e| format!("Failed to query collection: {}", e))
 }
 
 #[tauri::command]
-pub fn get_documents_from_chroma(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn get_documents_from_chroma(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
     collection_name: String,
     ids: Option<Vec<String>>,
     limit: Option<usize>,
 ) -> Result<Vec<QueryResult>, String> {
-    let mut manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let mut manager = chroma_manager.lock().await;
     let collection = manager.get_or_create_collection(&collection_name);
     
     let mut documents = Vec::new();
@@ -1219,64 +1243,64 @@ pub fn get_documents_from_chroma(
 }
 
 #[tauri::command]
-pub fn delete_documents_from_chroma(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn delete_documents_from_chroma(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
     request: DeleteDocumentsRequest,
 ) -> Result<(), String> {
-    let mut manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let mut manager = chroma_manager.lock().await;
     manager.delete(&request.collection_name, request.ids)
                 .map_err(|e| format!("Failed to delete documents: {}", e))
 }
 
 #[tauri::command]
-pub fn get_collection_count(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn get_collection_count(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
     collection_name: String,
 ) -> Result<usize, String> {
-    let mut manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let mut manager = chroma_manager.lock().await;
     manager.count(&collection_name).map_err(|e| format!("Failed to get collection count: {}", e))
 }
 
 #[tauri::command]
-pub fn get_rag_cache_stats(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn get_rag_cache_stats(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<CacheStats, String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     Ok(manager.get_cache_stats())
 }
 
 #[tauri::command]
-pub fn clear_rag_cache(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn clear_rag_cache(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<(), String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     manager.clear_cache();
     Ok(())
 }
 
 #[tauri::command]
-pub fn invalidate_collection_cache(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn invalidate_collection_cache(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
     collection_name: String,
 ) -> Result<(), String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     manager.invalidate_collection_cache(&collection_name);
     Ok(())
 }
 
 #[tauri::command]
-pub fn get_batch_processing_stats(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn get_batch_processing_stats(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<Option<BatchStats>, String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     Ok(manager.get_batch_stats())
 }
 
 #[tauri::command]
-pub fn is_batch_processing_enabled(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+pub async fn is_batch_processing_enabled(
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<bool, String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     Ok(manager.is_batch_processing_enabled())
 }
 
@@ -1284,59 +1308,59 @@ pub fn is_batch_processing_enabled(
 
 #[tauri::command]
 pub async fn get_chroma_health_stats(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<ChromaHealthStats, String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     Ok(manager.get_health_stats().await)
 }
 
 #[tauri::command]
 pub async fn check_chroma_health(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<bool, String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     Ok(manager.is_healthy().await)
 }
 
 #[tauri::command]
 pub async fn validate_chroma_connection(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<bool, String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     manager.validate_connection().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn check_chroma_connection_with_retry(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<bool, String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     manager.check_connection_with_retry().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn start_chroma_health_monitoring(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<(), String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     manager.start_health_monitoring().await;
     Ok(())
 }
 
 #[tauri::command]
 pub async fn stop_chroma_health_monitoring(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<(), String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     manager.stop_health_monitoring();
     Ok(())
 }
 
 #[tauri::command]
 pub async fn check_chroma_connection_detailed(
-    chroma_manager: State<'_, std::sync::Mutex<ChromaManager>>,
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<serde_json::Value, String> {
-    let manager = chroma_manager.lock().map_err(|e| format!("Failed to lock ChromaManager: {}", e))?;
+    let manager = chroma_manager.lock().await;
     
     let is_connected = manager.check_connection_with_retry().await.map_err(|e| e.to_string())?;
     let health_stats = manager.get_health_stats().await;
@@ -1351,21 +1375,369 @@ pub async fn check_chroma_connection_detailed(
     }))
 }
 
-// Note: Additional tests will be added when ChromaDB integration is stabilized
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
+    use tokio::runtime::Runtime;
+    
+    // Helper function to create test ChromaManager
+    fn create_test_manager() -> ChromaManager {
+        ChromaManager::new("./test_chroma_db").expect("Failed to create test ChromaManager")
+    }
+    
+    // Helper function to create runtime
+    fn runtime() -> Runtime {
+        Runtime::new().expect("Failed to create Tokio runtime")
+    }
     
     #[test]
     fn test_chroma_manager_creation() {
-        // Basic test to ensure ChromaManager can be created
-        // Note: This requires ChromaDB server to be running
-        if let Ok(_manager) = ChromaManager::new("./test_chroma_db") {
-            // ChromaDB connection successful
-            assert!(true);
-        } else {
-            // ChromaDB server not available - skip test
-            println!("ChromaDB server not available, skipping test");
-        }
+        let _manager = create_test_manager();
+        // Manager created successfully
+    }
+    
+    #[test]
+    fn test_collection_management() {
+        let rt = runtime();
+        rt.block_on(async {
+            let manager = create_test_manager();
+            
+            // Create collection
+            let collection_name = "test_collection_".to_string() + &uuid::Uuid::new_v4().to_string();
+            manager.create_collection(&collection_name, HashMap::new())
+                .expect("Failed to create collection");
+            
+            // List collections
+            let collections = manager.list_collections().expect("Failed to list collections");
+            assert!(collections.iter().any(|c| c.name == collection_name));
+            
+            // Delete collection
+            manager.delete_collection(&collection_name)
+                .expect("Failed to delete collection");
+            
+            // Verify deletion
+            let collections = manager.list_collections().expect("Failed to list collections");
+            assert!(!collections.iter().any(|c| c.name == collection_name));
+        });
+    }
+    
+    #[test]
+    fn test_document_operations() {
+        let rt = runtime();
+        rt.block_on(async {
+            let manager = create_test_manager();
+            let collection_name = "test_docs_".to_string() + &uuid::Uuid::new_v4().to_string();
+            
+            // Create collection
+            manager.create_collection(&collection_name, HashMap::new())
+                .expect("Failed to create collection");
+            
+            // Add documents
+            let docs = vec![
+                serde_json::json!({
+                    "id": "doc1",
+                    "content": "This is test document 1",
+                    "metadata": {"type": "test"}
+                }),
+                serde_json::json!({
+                    "id": "doc2",
+                    "content": "This is test document 2",
+                    "metadata": {"type": "test"}
+                }),
+            ];
+            
+            manager.add_documents(&collection_name, docs)
+                .expect("Failed to add documents");
+            
+            // Get documents
+            let retrieved_docs = manager.get_documents(&collection_name, Some(10), None, None)
+                .expect("Failed to get documents");
+            assert_eq!(retrieved_docs.len(), 2);
+            
+            // Delete document
+            manager.delete_documents(&collection_name, vec!["doc1".to_string()])
+                .expect("Failed to delete document");
+            
+            // Verify deletion
+            let remaining_docs = manager.get_documents(&collection_name, Some(10), None, None)
+                .expect("Failed to get documents");
+            assert_eq!(remaining_docs.len(), 1);
+            assert_eq!(remaining_docs[0].id, "doc2");
+            
+            // Cleanup
+            manager.delete_collection(&collection_name).ok();
+        });
+    }
+    
+    #[test]
+    fn test_query_operations() {
+        let rt = runtime();
+        rt.block_on(async {
+            let manager = create_test_manager();
+            let collection_name = "test_query_".to_string() + &uuid::Uuid::new_v4().to_string();
+            
+            // Create collection and add documents
+            manager.create_collection(&collection_name, HashMap::new())
+                .expect("Failed to create collection");
+            
+            let docs = vec![
+                serde_json::json!({
+                    "id": "doc1",
+                    "content": "Rust programming language",
+                    "metadata": {"category": "programming"}
+                }),
+                serde_json::json!({
+                    "id": "doc2",
+                    "content": "Python data science",
+                    "metadata": {"category": "programming"}
+                }),
+                serde_json::json!({
+                    "id": "doc3",
+                    "content": "TypeScript web development",
+                    "metadata": {"category": "web"}
+                }),
+            ];
+            
+            manager.add_documents(&collection_name, docs)
+                .expect("Failed to add documents");
+            
+            // Query documents
+            let results = manager.query(&collection_name, "programming language", 2, None, None)
+                .await
+                .expect("Failed to query documents");
+            
+            assert!(!results.documents.is_empty());
+            assert!(results.documents.len() <= 2);
+            
+            // Cleanup
+            manager.delete_collection(&collection_name).ok();
+        });
+    }
+    
+    #[test]
+    fn test_cache_operations() {
+        let rt = runtime();
+        rt.block_on(async {
+            let cache_config = CacheConfig {
+                enabled: true,
+                ttl_seconds: 300,
+                max_entries: 1000,
+                cleanup_interval_seconds: 600,
+            };
+            
+            let manager = ChromaManager::new_with_cache_config("./test_cache_db", cache_config)
+                .expect("Failed to create manager with cache");
+            
+            let collection_name = "test_cache_".to_string() + &uuid::Uuid::new_v4().to_string();
+            
+            // Create collection
+            manager.create_collection(&collection_name, HashMap::new())
+                .expect("Failed to create collection");
+            
+            // Add documents
+            let docs = vec![
+                serde_json::json!({
+                    "id": "cache_doc1",
+                    "content": "Cacheable content",
+                    "metadata": {}
+                }),
+            ];
+            
+            manager.add_documents(&collection_name, docs)
+                .expect("Failed to add documents");
+            
+            // First query (cache miss)
+            let _result1 = manager.query(&collection_name, "cacheable", 5, None, None)
+                .await
+                .expect("Failed to query");
+            
+            let stats1 = manager.get_cache_stats().await;
+            assert_eq!(stats1.get("miss_count").unwrap(), &1);
+            
+            // Second query (cache hit)
+            let _result2 = manager.query(&collection_name, "cacheable", 5, None, None)
+                .await
+                .expect("Failed to query");
+            
+            let stats2 = manager.get_cache_stats().await;
+            assert_eq!(stats2.get("hit_count").unwrap(), &1);
+            
+            // Clear cache
+            manager.clear_cache().await;
+            let stats3 = manager.get_cache_stats().await;
+            assert_eq!(stats3.get("total_queries").unwrap(), &0);
+            
+            // Cleanup
+            manager.delete_collection(&collection_name).ok();
+        });
+    }
+    
+    #[test]
+    fn test_health_monitoring() {
+        let rt = runtime();
+        rt.block_on(async {
+            let manager = create_test_manager();
+            
+            // Start health monitoring
+            manager.start_health_monitoring(std::time::Duration::from_secs(1));
+            
+            // Let it run for a bit
+            tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+            
+            // Get health stats
+            let stats = manager.get_health_stats().await;
+            assert!(stats.total_checks > 0);
+            
+            // Check if healthy
+            let is_healthy = manager.is_healthy().await;
+            assert!(is_healthy);
+            
+            // Stop monitoring
+            manager.stop_health_monitoring();
+        });
+    }
+    
+    #[test]
+    fn test_batch_processing() {
+        let rt = runtime();
+        rt.block_on(async {
+            let batch_config = BatchConfig {
+                enabled: true,
+                max_batch_size: 10,
+                max_wait_time_ms: 100,
+                max_concurrent_batches: 2,
+            };
+            
+            let mut manager = create_test_manager();
+            manager.enable_batch_processing(
+                OllamaClient::new(None),
+                Arc::new(ThreadPoolManager::new()),
+                batch_config
+            ).expect("Failed to enable batch processing");
+            
+            // Test batch stats
+            let stats = manager.get_batch_processing_stats().await
+                .expect("Failed to get batch stats");
+            
+            assert_eq!(stats.get("pending_batches").unwrap(), &0);
+            assert!(manager.is_batch_processing_enabled());
+        });
+    }
+    
+    #[test]
+    fn test_error_handling() {
+        let rt = runtime();
+        rt.block_on(async {
+            let manager = create_test_manager();
+            
+            // Try to delete non-existent collection
+            let result = manager.delete_collection("non_existent_collection");
+            assert!(result.is_err());
+            
+            // Try to add documents to non-existent collection
+            let docs = vec![serde_json::json!({"id": "test", "content": "test"})];
+            let result = manager.add_documents("non_existent_collection", docs);
+            assert!(result.is_err());
+            
+            // Try to query non-existent collection
+            let result = manager.query("non_existent_collection", "test", 5, None, None).await;
+            assert!(result.is_err());
+        });
+    }
+    
+    #[test]
+    fn test_concurrent_operations() {
+        let rt = runtime();
+        rt.block_on(async {
+            let manager = Arc::new(create_test_manager());
+            let collection_name = Arc::new("test_concurrent_".to_string() + &uuid::Uuid::new_v4().to_string());
+            
+            // Create collection
+            manager.create_collection(&collection_name, HashMap::new())
+                .expect("Failed to create collection");
+            
+            // Spawn multiple concurrent operations
+            let mut handles = vec![];
+            
+            for i in 0..10 {
+                let manager_clone = Arc::clone(&manager);
+                let collection_clone = Arc::clone(&collection_name);
+                
+                let handle = tokio::spawn(async move {
+                    let doc = serde_json::json!({
+                        "id": format!("doc_{}", i),
+                        "content": format!("Document number {}", i),
+                        "metadata": {"index": i}
+                    });
+                    
+                    manager_clone.add_documents(&collection_clone, vec![doc])
+                });
+                
+                handles.push(handle);
+            }
+            
+            // Wait for all operations to complete
+            for handle in handles {
+                handle.await.expect("Task panicked")
+                    .expect("Failed to add document");
+            }
+            
+            // Verify all documents were added
+            let docs = manager.get_documents(&collection_name, Some(20), None, None)
+                .expect("Failed to get documents");
+            assert_eq!(docs.len(), 10);
+            
+            // Cleanup
+            manager.delete_collection(&collection_name).ok();
+        });
+    }
+    
+    #[test]
+    fn test_metadata_filtering() {
+        let rt = runtime();
+        rt.block_on(async {
+            let manager = create_test_manager();
+            let collection_name = "test_metadata_".to_string() + &uuid::Uuid::new_v4().to_string();
+            
+            // Create collection
+            manager.create_collection(&collection_name, HashMap::new())
+                .expect("Failed to create collection");
+            
+            // Add documents with metadata
+            let docs = vec![
+                serde_json::json!({
+                    "id": "doc1",
+                    "content": "Document about Rust",
+                    "metadata": {"language": "rust", "type": "tutorial"}
+                }),
+                serde_json::json!({
+                    "id": "doc2",
+                    "content": "Document about Python",
+                    "metadata": {"language": "python", "type": "tutorial"}
+                }),
+                serde_json::json!({
+                    "id": "doc3",
+                    "content": "Document about Rust",
+                    "metadata": {"language": "rust", "type": "reference"}
+                }),
+            ];
+            
+            manager.add_documents(&collection_name, docs)
+                .expect("Failed to add documents");
+            
+            // Filter by metadata
+            let where_clause = serde_json::json!({"language": "rust"});
+            let rust_docs = manager.get_documents(&collection_name, Some(10), Some(where_clause), None)
+                .expect("Failed to get documents with filter");
+            
+            assert_eq!(rust_docs.len(), 2);
+            for doc in &rust_docs {
+                assert_eq!(doc.metadata.get("language").unwrap(), "rust");
+            }
+            
+            // Cleanup
+            manager.delete_collection(&collection_name).ok();
+        });
     }
 }

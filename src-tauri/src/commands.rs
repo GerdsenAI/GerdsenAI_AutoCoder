@@ -270,7 +270,7 @@ pub async fn generate_stream_with_ollama(
     save_to_rag: Option<bool>,
     app_handle: AppHandle,
     ollama_client: State<'_, OllamaClient>,
-    chroma_manager: State<'_, Mutex<ChromaManager>>,
+    chroma_manager: State<'_, tokio::sync::Mutex<ChromaManager>>,
 ) -> Result<(), String> {
     let client = ollama_client.inner();
     let use_rag = use_rag.unwrap_or(false);
@@ -349,7 +349,7 @@ pub async fn generate_stream_with_ollama(
             None
         };
         
-        let analysis_engine = AnalysisEngine::new(client.clone(), chroma_manager_clone);
+        let mut analysis_engine = AnalysisEngine::new(client.clone(), chroma_manager_clone);
         
         let analysis_config = AnalysisConfig {
             mode: analysis_mode.clone(),
