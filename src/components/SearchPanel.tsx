@@ -105,11 +105,11 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
               <span>.</span>
             </span>
           </div>
-        ) : results.length === 0 && query.trim() !== '' ? (
+        ) : (results || []).length === 0 && query.trim() !== '' ? (
           <div className="no-results">No results found for "{query}"</div>
         ) : (
           /* Results */
-          results.map((result, index) => (
+          (results || []).map((result, index) => (
             <div
               key={`${result.url}-${index}`}
               className="search-result"

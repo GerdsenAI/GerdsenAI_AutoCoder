@@ -115,15 +115,19 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelSelect, sel
           </div>
           <div className="model-info">
             <span className="model-name">{selectedModel || 'Select a model'}</span>
-            {selectedModel && models.find(m => m.name === selectedModel)?.parameter_size && (
-              <span className="model-details">
-                {models.find(m => m.name === selectedModel)?.parameter_size} • 
-                {models.find(m => m.name === selectedModel)?.quantization && 
-                  ` ${models.find(m => m.name === selectedModel)?.quantization} •`} 
-                {models.find(m => m.name === selectedModel) && 
-                  formatSize(models.find(m => m.name === selectedModel)!.size_mb)}
-              </span>
-            )}
+            {(() => {
+              const selectedModelInfo = selectedModel && models && Array.isArray(models) 
+                ? models.find(m => m.name === selectedModel) 
+                : null;
+              
+              return selectedModelInfo?.parameter_size ? (
+                <span className="model-details">
+                  {selectedModelInfo.parameter_size} • 
+                  {selectedModelInfo.quantization && ` ${selectedModelInfo.quantization} •`} 
+                  {formatSize(selectedModelInfo.size_mb)}
+                </span>
+              ) : null;
+            })()}
           </div>
         </div>
         <div className="connection-status">

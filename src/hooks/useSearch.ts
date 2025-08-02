@@ -227,9 +227,9 @@ export function useSearch(options: UseSearchOptions = {}) {
     getAvailableCategories,
     
     // Computed
-    hasResults: results.length > 0,
+    hasResults: (results || []).length > 0,
     canSearch: query.trim().length > 0 && !isLoading,
-    hasActiveEngines: activeEngines.length > 0,
+    hasActiveEngines: (activeEngines || []).length > 0,
   };
 }
 

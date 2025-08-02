@@ -108,6 +108,8 @@ export default defineConfig(({ command, mode }) => {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
       css: true,
+      include: ['src/**/*.{test,spec}.{ts,tsx}'],
+      exclude: ['node_modules', 'dist', 'src-tauri', 'tests/e2e/**/*', 'tests/integration/**/*'],
     },
   };
 });
