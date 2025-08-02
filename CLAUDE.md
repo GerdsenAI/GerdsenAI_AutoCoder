@@ -82,6 +82,31 @@ Observation: "The app feels slow"
 
 This inquiry-based approach leads to deeper understanding, fewer bugs, and better solutions.
 
+## Repository-Wide Code Analysis
+
+The application now includes comprehensive repository-wide code analysis capabilities following our Socratic architecture pattern:
+
+### Architecture Components
+- **`src/services/repository-analyzer.ts`**: Core analysis service with comprehensive repository examination
+- **`src/hooks/useRepositoryAnalysis.ts`**: Custom hook implementing Socratic separation of concerns
+- **`src/components/RepositoryAnalysisPanel.tsx`**: UI component focused purely on presentation
+- **Tests**: Behavior-focused testing validating user experience (11/11 tests passing)
+
+### Analysis Capabilities
+1. **Repository Structure Analysis**: Complete file tree analysis with language detection
+2. **Dependency Mapping**: Cross-file dependency tracking and visualization
+3. **Code Metrics**: Complexity, maintainability, and quality assessment
+4. **AI-Enhanced Analysis**: Intelligent refactoring, optimization, testing, and security suggestions
+5. **Test Coverage Analysis**: Comprehensive coverage reporting and gap identification
+6. **Impact Analysis**: Change impact assessment and risk evaluation
+
+### Socratic Design Benefits Demonstrated
+- **Clean Component Interface**: RepositoryAnalysisPanel focuses solely on user interaction
+- **Business Logic Separation**: All complex analysis logic delegated to useRepositoryAnalysis hook
+- **Error Resilience**: Graceful degradation when services are unavailable
+- **Testable Architecture**: 100% test success rate through behavior-focused testing
+- **User-Centric Design**: Interface designed around user workflows, not implementation details
+
 ### Socratic Development Success Pattern
 
 **Proven Pattern for Component Development**:
