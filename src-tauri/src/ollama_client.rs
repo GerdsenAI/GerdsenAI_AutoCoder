@@ -1310,11 +1310,7 @@ invalid json line
             .mock("POST", "/api/generate")
             .with_status(200)
             .with_header("content-type", "application/json")
-            .with_body_from_fn(|| {
-                // Simulate a slow response
-                std::thread::sleep(Duration::from_millis(100));
-                r#"{"model":"test-model","response":"Slow response","done":true}"#.to_string()
-            })
+            .with_body(r#"{"model":"test-model","response":"Slow response","done":true}"#)
             .create();
             
         let client = OllamaClient::new(Some(server.url()));

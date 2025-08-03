@@ -15,6 +15,11 @@ pub mod ollama_provider;
 pub mod openai_client;
 pub mod anthropic_client;
 pub mod multi_ai_commands;
+pub mod context_manager;
+pub mod history_manager;
+pub mod lsp_server;
+pub mod code_analysis;
+pub mod mcp_manager;
 
 #[cfg(test)]
 mod tests;

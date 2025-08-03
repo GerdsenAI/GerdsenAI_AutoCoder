@@ -1,8 +1,6 @@
-use crate::searxng_client::{SearXNGClient, SearchResult};
-use crate::searxng_commands::*;
+use crate::searxng_client::SearXNGClient;
 use serial_test::serial;
 use std::time::Duration;
-use tauri::{AppHandle, Manager, State};
 use tokio::time::timeout;
 
 /// Integration tests for SearXNG commands
@@ -118,7 +116,7 @@ async fn test_search_web_with_specific_engines() {
     // Check that results come from specified engines (when engine info is available)
     for result in &search_results {
         if !result.engine.is_empty() && result.engine != "unknown" {
-            let engine_found = engines.iter().any(|e| {
+            let _engine_found = engines.iter().any(|e| {
                 result.engine.to_lowercase().contains(&e.to_lowercase()) ||
                 e.to_lowercase().contains(&result.engine.to_lowercase())
             });

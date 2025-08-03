@@ -170,7 +170,7 @@ impl ContextManager {
     }
 
     /// Get file type from extension
-    fn get_file_type(&self, file_path: &str) -> String {
+    pub fn get_file_type(&self, file_path: &str) -> String {
         Path::new(file_path)
             .extension()
             .and_then(|ext| ext.to_str())

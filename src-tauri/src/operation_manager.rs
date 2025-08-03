@@ -208,7 +208,7 @@ impl OperationManager {
                         };
                         
                         // Record completion time and memory used
-                        let execution_time = start_time.elapsed();
+                        let _execution_time = start_time.elapsed();
                         let completed_at = SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .unwrap_or_default()

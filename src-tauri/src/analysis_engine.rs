@@ -510,7 +510,7 @@ impl AnalysisEngine {
     pub async fn get_pattern_statistics(&self) -> HashMap<String, usize> {
         let mut stats = HashMap::new();
         
-        if let Some(manager) = &self.chroma_manager {
+        if let Some(_manager) = &self.chroma_manager {
             // This would require ChromaDB to support collection statistics
             // For now, return empty stats
             stats.insert("total_patterns".to_string(), 0);

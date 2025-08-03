@@ -1,11 +1,10 @@
-use crate::ollama_client::{OllamaClient, ChatMessage, GenerateOptions, HealthStats, HealthConfig};
+use crate::ollama_client::{OllamaClient, ChatMessage, GenerateOptions, HealthStats};
 use crate::chroma_manager::ChromaManager;
 use crate::operation_manager::{Operation, OperationStatus};
 use crate::analysis_engine::{AnalysisEngine, AnalysisMode, AnalysisConfig, should_suggest_deep_analysis};
-use crate::user_errors::{ToUserError, common};
+use crate::user_errors::ToUserError;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State, Emitter};
-use tokio::sync::Mutex;
 use tokio::time::Duration;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -262,7 +261,7 @@ pub async fn generate_stream_with_ollama(
     prompt: String,
     use_rag: Option<bool>,
     session_id: Option<String>,
-    context: Option<Vec<String>>,
+    _context: Option<Vec<String>>,
     temperature: Option<f32>,
     collection: Option<String>,
     analysis_mode: Option<String>,
@@ -343,7 +342,7 @@ pub async fn generate_stream_with_ollama(
     if !matches!(analysis_mode, AnalysisMode::Standard) {
         // Create analysis engine
         let chroma_manager_clone = {
-            let manager = chroma_manager.lock().await;
+            let _manager = chroma_manager.lock().await;
             // We can't clone ChromaManager, so we'll pass None for now
             // In a real implementation, we'd need to handle this differently
             None

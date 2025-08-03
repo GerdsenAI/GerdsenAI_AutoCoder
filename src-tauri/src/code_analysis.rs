@@ -335,7 +335,7 @@ impl CodeAnalysisService {
         let file_analyses = stream::iter(files)
             .map(|file_path| {
                 let path_clone = file_path.clone();
-                let service = self.clone();
+                let service = self;
                 async move {
                     if let Ok(content) = std::fs::read_to_string(&path_clone) {
                         let language = service.detect_language(&path_clone);
@@ -611,7 +611,7 @@ impl CodeAnalysisService {
         let dependency_nodes = stream::iter(files)
             .map(|file_path| {
                 let path_clone = file_path.clone();
-                let service = self.clone();
+                let service = self;
                 async move {
                     if let Ok(content) = std::fs::read_to_string(&path_clone) {
                         let language = service.detect_language(&path_clone);
@@ -697,7 +697,7 @@ impl CodeAnalysisService {
     }
     
     // Helper method to extract symbols and imports from file content
-    async fn extract_symbols_and_imports(&self, content: &str, language: &str, file_path: &str) -> (Vec<Symbol>, Vec<Import>) {
+    async fn extract_symbols_and_imports(&self, content: &str, language: &str, _file_path: &str) -> (Vec<Symbol>, Vec<Import>) {
         let client = self.ollama_client.lock().await;
         
         // Prepare the prompt for extraction
@@ -896,7 +896,7 @@ impl CodeAnalysisService {
         // For each change, determine affected symbols
         // This is a simplified approach - a real implementation would need to parse the code
         // and determine exactly which symbols are affected by each change
-        for change in &request.changes {
+        for _change in &request.changes {
             // Find symbols whose location overlaps with the change
             for symbol in &affected_node.symbols {
                 // Simple check - in reality would need more precise range checking
@@ -913,7 +913,7 @@ impl CodeAnalysisService {
             if edge.to == request.file_path {
                 // This file imports from our changed file
                 let importing_file = edge.from.clone();
-                let importing_node = dep_graph.nodes.get(&importing_file).unwrap();
+                let _importing_node = dep_graph.nodes.get(&importing_file).unwrap();
                 
                 // Check if any of the imported symbols are affected
                 let mut affected_symbols = Vec::new();
@@ -1044,7 +1044,7 @@ impl CodeAnalysisService {
         ];
         
         // Get response from Ollama
-        let response = client
+        let _response = client
             .chat(
                 "llama3:latest", // Use a suitable model
                 messages,

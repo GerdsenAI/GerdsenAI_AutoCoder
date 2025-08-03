@@ -2,7 +2,7 @@ use crate::ai_providers::*;
 use crate::ollama_client::{OllamaClient, GenerateOptions as OllamaOptions, ModelInfo};
 use async_trait::async_trait;
 use std::collections::HashMap;
-use tokio_stream::{Stream, StreamExt};
+use tokio_stream::Stream;
 use async_stream;
 
 /// Ollama provider adapter

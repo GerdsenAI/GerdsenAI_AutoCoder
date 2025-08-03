@@ -57,6 +57,60 @@ impl ToUserError for Box<dyn std::error::Error> {
     }
 }
 
+impl ToUserError for &str {
+    fn to_user_error(&self) -> UserError {
+        let error_str = self.to_lowercase();
+        
+        // Connection-related errors
+        if error_str.contains("connection refused") || error_str.contains("could not connect") {
+            if error_str.contains("11434") || error_str.contains("ollama") {
+                return UserError {
+                    title: "Ollama Not Running".to_string(),
+                    message: "Cannot connect to Ollama. The AI service appears to be offline.".to_string(),
+                    suggestion: Some("Please start Ollama by running 'ollama serve' in your terminal, or restart the Ollama application.".to_string()),
+                    help_link: Some("https://ollama.ai/download".to_string()),
+                    error_code: "OLLAMA_OFFLINE".to_string(),
+                    technical_details: Some(self.to_string()),
+                };
+            }
+        }
+        
+        // Model-related errors
+        if error_str.contains("model") && (error_str.contains("not found") || error_str.contains("does not exist")) {
+            return UserError {
+                title: "Model Not Found".to_string(),
+                message: "The requested AI model is not available on your system.".to_string(),
+                suggestion: Some("Try downloading the model first, or check if the model name is correct.".to_string()),
+                help_link: None,
+                error_code: "MODEL_NOT_FOUND".to_string(),
+                technical_details: Some(self.to_string()),
+            };
+        }
+        
+        // Timeout errors
+        if error_str.contains("timeout") || error_str.contains("timed out") {
+            return UserError {
+                title: "Request Timed Out".to_string(),
+                message: "The operation took too long to complete.".to_string(),
+                suggestion: Some("This might be due to a slow connection or a complex request. Please try again.".to_string()),
+                help_link: None,
+                error_code: "TIMEOUT".to_string(),
+                technical_details: Some(self.to_string()),
+            };
+        }
+        
+        // Default generic error
+        UserError {
+            title: "Unexpected Error".to_string(),
+            message: "An unexpected error occurred while processing your request.".to_string(),
+            suggestion: Some("Please try again. If the problem persists, you can report this issue for assistance.".to_string()),
+            help_link: None,
+            error_code: "GENERIC_ERROR".to_string(),
+            technical_details: Some(self.to_string()),
+        }
+    }
+}
+
 impl ToUserError for Box<dyn std::error::Error + Send> {
     fn to_user_error(&self) -> UserError {
         let error_str = self.to_string().to_lowercase();

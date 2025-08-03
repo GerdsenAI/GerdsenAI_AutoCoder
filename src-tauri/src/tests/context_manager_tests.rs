@@ -1,14 +1,14 @@
 use crate::context_manager::*;
 use std::sync::Arc;
+use std::io::Write;
 use tempfile::NamedTempFile;
-use tokio::io::AsyncWriteExt;
 use serial_test::serial;
 
 /// Helper function to create a temporary file with content
-async fn create_temp_file(content: &str) -> Result<NamedTempFile, std::io::Error> {
+fn create_temp_file(content: &str) -> Result<NamedTempFile, std::io::Error> {
     let mut temp_file = NamedTempFile::new()?;
-    temp_file.write_all(content.as_bytes()).await?;
-    temp_file.flush().await?;
+    temp_file.write_all(content.as_bytes())?;
+    temp_file.flush()?;
     Ok(temp_file)
 }
 
@@ -74,7 +74,7 @@ async fn test_file_token_counting() {
     let manager = create_test_manager();
     let content = "This is a test file with some content for token counting.";
     
-    let temp_file = create_temp_file(content).await.unwrap();
+    let temp_file = create_temp_file(content).unwrap();
     let file_path = temp_file.path().to_str().unwrap();
     
     let token_count = manager.count_file_tokens(file_path).await.unwrap();
@@ -88,7 +88,7 @@ async fn test_file_token_caching() {
     let manager = create_test_manager();
     let content = "Cached content for testing token caching functionality.";
     
-    let temp_file = create_temp_file(content).await.unwrap();
+    let temp_file = create_temp_file(content).unwrap();
     let file_path = temp_file.path().to_str().unwrap();
     
     // First call should read from file
@@ -221,8 +221,8 @@ async fn test_budget_calculation_with_pinned_files() {
     let content1 = "First test file content.";
     let content2 = "Second test file with more content for testing.";
     
-    let temp_file1 = create_temp_file(content1).await.unwrap();
-    let temp_file2 = create_temp_file(content2).await.unwrap();
+    let temp_file1 = create_temp_file(content1).unwrap();
+    let temp_file2 = create_temp_file(content2).unwrap();
     
     let file_path1 = temp_file1.path().to_str().unwrap().to_string();
     let file_path2 = temp_file2.path().to_str().unwrap().to_string();
@@ -311,7 +311,7 @@ async fn test_build_context_with_pinned_files() {
     let manager = create_test_manager();
     let content = "Pinned file content for context building test.";
     
-    let temp_file = create_temp_file(content).await.unwrap();
+    let temp_file = create_temp_file(content).unwrap();
     let file_path = temp_file.path().to_str().unwrap().to_string();
     
     // Pin the file
@@ -332,8 +332,8 @@ async fn test_build_context_with_suggested_files() {
     let content1 = "First suggested file content.";
     let content2 = "Second suggested file content.";
     
-    let temp_file1 = create_temp_file(content1).await.unwrap();
-    let temp_file2 = create_temp_file(content2).await.unwrap();
+    let temp_file1 = create_temp_file(content1).unwrap();
+    let temp_file2 = create_temp_file(content2).unwrap();
     
     let file_path1 = temp_file1.path().to_str().unwrap().to_string();
     let file_path2 = temp_file2.path().to_str().unwrap().to_string();
@@ -358,7 +358,7 @@ async fn test_build_context_budget_constraint() {
     let small_manager = ContextManager::new(100, 50); // Very small budget
     let large_content = "word ".repeat(1000); // Very large file
     
-    let temp_file = create_temp_file(&large_content).await.unwrap();
+    let temp_file = create_temp_file(&large_content).unwrap();
     let file_path = temp_file.path().to_str().unwrap().to_string();
     
     let conversation = "Test";
@@ -385,7 +385,7 @@ async fn test_build_context_sorting_by_relevance() {
     let mut file_paths = Vec::new();
     
     for (name, content) in files {
-        let temp_file = create_temp_file(content).await.unwrap();
+        let temp_file = create_temp_file(content).unwrap();
         let mut path = temp_file.path().to_path_buf();
         path.set_file_name(name); // Set specific name to control relevance
         let path_str = path.to_str().unwrap().to_string();
@@ -410,7 +410,7 @@ async fn test_cache_clearing() {
     let manager = create_test_manager();
     let content = "Content for cache clearing test.";
     
-    let temp_file = create_temp_file(content).await.unwrap();
+    let temp_file = create_temp_file(content).unwrap();
     let file_path = temp_file.path().to_str().unwrap();
     
     // Count tokens to populate cache
@@ -475,7 +475,7 @@ async fn test_concurrent_cache_operations() {
     let mut file_paths = Vec::new();
     
     for i in 0..5 {
-        let temp_file = create_temp_file(&format!("{} {}", content, i)).await.unwrap();
+        let temp_file = create_temp_file(&format!("{} {}", content, i)).unwrap();
         let path = temp_file.path().to_str().unwrap().to_string();
         file_paths.push(path);
         temp_files.push(temp_file);

@@ -15,7 +15,7 @@ pub async fn check_searxng_connection(
     
     match client.check_connection().await {
         Ok(result) => Ok(result),
-        Err(e) => {
+        Err(_e) => {
             let user_error = common::service_temporarily_unavailable("SearXNG");
             Err(serde_json::to_string(&user_error).unwrap_or_else(|_| user_error.message))
         }
@@ -61,7 +61,7 @@ pub async fn search_web(
 
 #[tauri::command]
 pub async fn get_available_categories(
-    searxng_client: State<'_, SearXNGClient>,
+    _searxng_client: State<'_, SearXNGClient>,
 ) -> Result<Vec<String>, String> {
     // Return commonly used SearXNG categories
     Ok(vec![

@@ -27,6 +27,8 @@ fn create_test_operation(
         timeout_ms: Some(5000),
         cancellable,
         payload: serde_json::json!({"test": "data"}),
+        completed_at: None,
+        memory_used: None,
     }
 }
 
@@ -435,6 +437,8 @@ async fn test_operation_timeout_handling() {
         timeout_ms: Some(100), // Very short timeout
         cancellable: true,
         payload: serde_json::json!({"test": "timeout"}),
+        completed_at: None,
+        memory_used: None,
     };
     
     assert_eq!(operation.timeout_ms, Some(100));

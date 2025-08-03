@@ -198,7 +198,7 @@ impl LanguageServer for Backend {
         let document_map = self.document_map.lock().await;
         let uri = &params.text_document_position_params.text_document.uri;
         
-        if let Some(_document) = document_map.get(uri) {
+        if let Some(document) = document_map.get(uri) {
             let position = params.text_document_position_params.position;
             
             // Extract the word and surrounding context
@@ -232,7 +232,7 @@ impl LanguageServer for Backend {
         let document_map = self.document_map.lock().await;
         let uri = &params.text_document_position.text_document.uri;
         
-        if let Some(_document) = document_map.get(uri) {
+        if let Some(document) = document_map.get(uri) {
             let position = params.text_document_position.position;
             let language = Self::detect_language_from_uri(uri);
             

@@ -207,10 +207,10 @@ pub async fn generate_ai_stream(
     // to subscribe to stream events. This is a simplified implementation.
     // In a full implementation, you'd use Tauri events or WebSockets.
     
-    let manager = state.client_manager.lock().await;
-    let model_id = request.model_id.unwrap_or_else(|| {
+    let _manager = state.client_manager.lock().await;
+    let _model_id = request.model_id.unwrap_or_else(|| {
         // Get best model for the task
-        let capability = if let Some(cap_str) = request.capability {
+        let _capability = if let Some(cap_str) = request.capability {
             serde_json::from_str::<ModelCapability>(&format!("\"{}\"", cap_str))
                 .unwrap_or_else(|_| classify_prompt_capability(&request.prompt))
         } else {
