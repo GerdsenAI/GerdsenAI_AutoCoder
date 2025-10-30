@@ -8,9 +8,9 @@
 
 ### Windows Users
 1. **Download** the latest release from the repository
-2. **Right-click** `INSTALL_DEPENDENCIES.BAT` → "Run as administrator"
+2. **Right-click** `install-wrapper.bat` → "Run as administrator" (or use `scripts/windows/install-dependencies.bat` directly)
 3. **Wait** for setup to complete (5-10 minutes)
-4. **Launch** with `START_APPLICATION.BAT`
+4. **Launch** with `start-wrapper.bat` (or use `scripts/windows/start-application.bat` directly)
 
 ### Mac/Linux Users
 ```bash
@@ -273,9 +273,9 @@ ollama pull llama3.2
 
 ## 📚 Additional Resources
 
-- **Detailed Setup**: See `WINDOWS_SETUP.md` for comprehensive installation help
-- **Troubleshooting**: Run `node scripts/verify-setup.js` for system diagnostics
-- **Advanced Usage**: Check `USER_GUIDE.md` for complete feature documentation
+- **Detailed Setup**: See [Windows Setup Guide](../setup/windows.md) and [Installation Guide](../installation/installation-guide.md) for comprehensive installation help
+- **Troubleshooting**: Run `node scripts/verify-setup.js` for system diagnostics or see [Troubleshooting Guide](./troubleshooting.md)
+- **Advanced Usage**: Check [User Manual](../usage/user-manual.md) for complete feature documentation
 - **Community**: Join discussions in the project repository
 
 ---
