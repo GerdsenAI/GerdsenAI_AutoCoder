@@ -218,10 +218,10 @@ The application follows a modular architecture with clear separation of concerns
 - **Cargo.toml**: Rust dependencies and build configuration
 
 ### Installation and Dependencies
-- Windows-focused with automated setup via `INSTALL_DEPENDENCIES.BAT`
+- Windows-focused with automated setup via `scripts/windows/install-dependencies.bat`
 - Requires Ollama, SearXNG, and ChromaDB as external services
-- Uses `START_APPLICATION.BAT` for simplified application launching
-- Comprehensive setup documentation in `WINDOWS_SETUP.md`
+- Uses `scripts/windows/start-application.bat` for simplified application launching
+- Comprehensive setup documentation in `docs/setup/windows.md`
 
 ## Development Notes
 

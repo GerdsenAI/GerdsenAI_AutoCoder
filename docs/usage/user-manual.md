@@ -78,8 +78,10 @@ GerdsenAI Socrates is an advanced AI-powered coding assistant designed to enhanc
 #### Option 2: Manual Installation
 1. **Install Prerequisites**:
    ```batch
-   # Run the dependency installer
-   INSTALL_DEPENDENCIES.BAT
+   # Run the dependency installer (from repository root)
+   install-wrapper.bat
+   # Or directly:
+   scripts\windows\install-dependencies.bat
    ```
 
 2. **Install Ollama**:
@@ -88,7 +90,10 @@ GerdsenAI Socrates is an advanced AI-powered coding assistant designed to enhanc
 
 3. **Launch Application**:
    ```batch
-   START_APPLICATION.BAT
+   # From repository root
+   start-wrapper.bat
+   # Or directly:
+   scripts\windows\start-application.bat
    ```
 
 ### macOS Installation

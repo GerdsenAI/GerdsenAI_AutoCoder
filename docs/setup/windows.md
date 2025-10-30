@@ -17,9 +17,9 @@
 
 **For most users, this one-click setup will handle everything:**
 
-1. **Right-click** on `INSTALL_DEPENDENCIES.BAT` and select **"Run as administrator"**
+1. **Right-click** on `scripts/windows/install-dependencies.bat` and select **"Run as administrator"** (or use the root wrapper `install-wrapper.bat`)
 2. **Wait** for the automatic installation to complete (5-15 minutes)
-3. **Run** `START_APPLICATION.BAT` to launch GerdsenAI Socrates
+3. **Run** `scripts/windows/start-application.bat` to launch GerdsenAI Socrates (or use the root wrapper `start-wrapper.bat`)
 4. **Verify** setup by running `node scripts/verify-setup.js` in the project directory
 
 > 💡 **Tip**: The installer will automatically detect missing dependencies and install them. You'll see green checkmarks for successful installations.
@@ -198,7 +198,7 @@ When reporting issues, include:
 
 ## Creating an Installer
 
-1. Right-click on `GENERATE_INSTALLER.BAT` and select "Run as administrator"
+1. Right-click on `scripts/windows/generate-installer.bat` and select "Run as administrator"
 2. Follow the on-screen instructions
 3. The installer will be created in `.\installer\GerdsenAI_Socrates_Setup.msi`
 4. A ZIP archive will also be created at `.\GerdsenAI_Socrates_Installer.zip`

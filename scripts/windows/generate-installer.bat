@@ -23,7 +23,7 @@ echo [INFO] Checking for required tools...
 REM Check for Node.js
 where node >nul 2>&1
 if %errorLevel% neq 0 (
-    echo [ERROR] Node.js not found. Please run INSTALL_DEPENDENCIES.BAT first.
+    echo [ERROR] Node.js not found. Please run scripts\windows\install-dependencies.bat first.
     echo.
     pause
     exit /b 1
@@ -32,7 +32,7 @@ if %errorLevel% neq 0 (
 REM Check for Rust
 where rustc >nul 2>&1
 if %errorLevel% neq 0 (
-    echo [ERROR] Rust not found. Please run INSTALL_DEPENDENCIES.BAT first.
+    echo [ERROR] Rust not found. Please run scripts\windows\install-dependencies.bat first.
     echo.
     pause
     exit /b 1
@@ -41,7 +41,7 @@ if %errorLevel% neq 0 (
 REM Check for Tauri CLI
 where cargo >nul 2>&1
 if %errorLevel% neq 0 (
-    echo [ERROR] Cargo not found. Please run INSTALL_DEPENDENCIES.BAT first.
+    echo [ERROR] Cargo not found. Please run scripts\windows\install-dependencies.bat first.
     echo.
     pause
     exit /b 1

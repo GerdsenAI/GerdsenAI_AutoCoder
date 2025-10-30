@@ -46,8 +46,10 @@ Before diving into specific issues, run through this quick checklist:
 
 4. **Use Alternative Installation**:
    ```batch
-   # Use manual installation method
-   INSTALL_DEPENDENCIES.BAT
+   # Use manual installation method (from repository root)
+   install-wrapper.bat
+   # Or directly:
+   scripts\windows\install-dependencies.bat
    ```
 
 #### macOS DMG Installation Problems
