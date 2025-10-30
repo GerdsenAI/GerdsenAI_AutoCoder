@@ -75,3 +75,8 @@ debug.log
 
 # Mockups and design files (optional, uncomment if you want to exclude)
 # mockups/
+
+# Generated verification and setup reports
+setup-verification-report.json
+*-verification-report.json
+verification-report.json
