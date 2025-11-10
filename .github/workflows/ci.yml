@@ -122,21 +122,21 @@ jobs:
         
       - name: Upload build artifacts (Windows)
         if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows-installer
           path: src-tauri/target/release/bundle/msi/*.msi
           
       - name: Upload build artifacts (macOS)
         if: matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macos-installer
           path: src-tauri/target/release/bundle/dmg/*.dmg
           
       - name: Upload build artifacts (Linux)
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux-installer
           path: src-tauri/target/release/bundle/appimage/*.AppImage
