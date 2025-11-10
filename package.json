@@ -37,7 +37,7 @@
     "axios": "^1.6.7",
     "chromadb": "^3.0.3",
     "date-fns": "^4.1.0",
-    "ollama": "^0.5.16",
+    "ollama": "^0.6.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^9.0.1",
