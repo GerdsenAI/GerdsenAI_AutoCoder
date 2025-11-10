@@ -33,7 +33,7 @@
     "quality:fix": "npm run lint:fix && npm run format && npm run test:run"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.7.0",
+    "@tauri-apps/api": "^2.9.0",
     "axios": "^1.6.7",
     "chromadb": "^3.0.3",
     "date-fns": "^4.1.0",
