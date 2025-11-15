@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { defineConfig, loadEnv } from 'vite';
-import react from '@vitejs/plugin-react';
+import react from '@vitejs/plugin-react-swc';
+import { visualizer } from 'rollup-plugin-visualizer';
 import { resolve } from 'path';
 import fs from 'fs';
 
@@ -53,15 +54,36 @@ export default defineConfig(({ command, mode }) => {
   }
 
   return {
-    plugins: [react()],
-    
+    plugins: [
+      react(),
+      // TODO: Re-enable PWA when vite-plugin-pwa supports Vite 7
+      // VitePWA configuration would go here
+      visualizer({
+        filename: './dist/stats.html',
+        open: false,
+        gzipSize: true,
+        brotliSize: true,
+      }),
+    ],
+
     // Explicitly define the entry point
     build: {
       rollupOptions: {
         input: {
           main: resolve(__dirname, 'index.html'),
         },
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom'],
+            'tauri-vendor': ['@tauri-apps/api'],
+            'markdown-vendor': ['react-markdown', 'react-syntax-highlighter'],
+          },
+        },
+        external: ['ollama', 'chromadb'],
       },
+      target: 'esnext',
+      minify: 'esbuild',
+      chunkSizeWarningLimit: 1000,
     },
     
     // Explicitly include dependencies for pre-bundling
