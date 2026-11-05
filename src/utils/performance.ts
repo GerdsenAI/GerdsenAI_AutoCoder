@@ -1,4 +1,4 @@
-import { onCLS, onFID, onFCP, onLCP, onTTFB, Metric } from 'web-vitals';
+import { onCLS, onINP, onFCP, onLCP, onTTFB, Metric } from 'web-vitals';
 
 function sendToAnalytics(metric: Metric): void {
   // Log to console in development
@@ -14,7 +14,7 @@ function sendToAnalytics(metric: Metric): void {
 
 export function initPerformanceMonitoring(): void {
   onCLS(sendToAnalytics);
-  onFID(sendToAnalytics);
+  onINP(sendToAnalytics);
   onFCP(sendToAnalytics);
   onLCP(sendToAnalytics);
   onTTFB(sendToAnalytics);
@@ -31,3 +31,4 @@ export function reportWebVitals(): void {
   // This can be called from main.tsx to start monitoring
   initPerformanceMonitoring();
 }
+
